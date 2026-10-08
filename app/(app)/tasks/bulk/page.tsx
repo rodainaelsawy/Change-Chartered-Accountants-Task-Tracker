@@ -3,7 +3,9 @@ import { bulkAddTasks } from '@/app/actions/templates'
 import { ActionForm } from '@/components/action-form'
 import { ASSIGNEES_CHECK, AssigneePicker } from '@/components/assignee-picker'
 import { BulkRowsEditor } from '@/components/rows-editor'
-import { Card, Field, PageHeader, inputCls } from '@/components/ui'
+import { CompanyCombobox } from '@/components/form-inputs'
+import { SideTips } from '@/components/side-tips'
+import { Crumbs, Card, Field, PageHeader } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
 import { addDays, todayIn } from '@/lib/dates'
 import { companyOptions, teamMembers } from '@/lib/queries'
@@ -16,11 +18,7 @@ export default async function BulkAddPage({ searchParams }: { searchParams: Prom
   const [companies, team] = await Promise.all([companyOptions(org.id), teamMembers(org.id)])
   return (
     <>
-      <div className="mb-2 text-sm">
-        <Link href="/tasks" className="text-brand-700 hover:underline">
-          المهام
-        </Link>
-      </div>
+      <Crumbs items={[{ href: '/tasks', label: 'المهام' }]} />
       <PageHeader
         title="إضافة عدة مهام لشركة"
         subtitle={
@@ -33,24 +31,25 @@ export default async function BulkAddPage({ searchParams }: { searchParams: Prom
           </>
         }
       />
-      <Card className="max-w-4xl p-5">
-        <ActionForm action={bulkAddTasks} submitLabel="إضافة المهام" checkGroups={ASSIGNEES_CHECK}>
+      <div className="grid gap-6 xl:grid-cols-3">
+      <Card className="p-5 xl:col-span-2">
+        <ActionForm action={bulkAddTasks} submitLabel="إضافة المهام" checkGroups={ASSIGNEES_CHECK} cancelHref={sp.company ? `/companies/${sp.company}` : '/tasks'}>
           <Field label="الشركة">
-            <select name="company_id" required defaultValue={sp.company ?? ''} className={`${inputCls} max-w-md`}>
-              <option value="" disabled>
-                اختر الشركة…
-              </option>
-              {companies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            <CompanyCombobox name="company_id" required companies={companies} defaultValue={sp.company} />
           </Field>
           <AssigneePicker team={team} selected={[user.id]} />
           <BulkRowsEditor defaultDeadline={addDays(todayIn(org.timezone), 7)} />
         </ActionForm>
       </Card>
+      <SideTips
+        items={[
+          'كل المهام تُضاف لنفس الشركة ولنفس المسؤولين.',
+          'الصف الأول إلزامي، والصفوف التي ليس لها عنوان يتم تجاهلها.',
+          'لتكرار نفس المجموعة لعدة شركات أو كل شهر استخدم القوالب.',
+        ]}
+        links={[{ href: '/templates', label: 'قوالب المهام' }]}
+      />
+      </div>
     </>
   )
 }

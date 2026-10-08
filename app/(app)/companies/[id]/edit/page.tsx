@@ -1,7 +1,7 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { CompanyForm } from '@/components/company-form'
-import { Card, PageHeader } from '@/components/ui'
+import { SideTips } from '@/components/side-tips'
+import { Crumbs, Card, PageHeader } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
 import { one } from '@/lib/db'
 import type { Company } from '@/lib/types'
@@ -23,15 +23,21 @@ export default async function EditCompanyPage({
   if (!company) notFound()
   return (
     <>
-      <div className="mb-2 text-sm">
-        <Link href={`/companies/${id}`} className="text-brand-700 hover:underline">
-          {company.name}
-        </Link>
-      </div>
+      <Crumbs items={[{ href: '/companies', label: 'الشركات' }, { href: `/companies/${id}`, label: company.name }]} />
       <PageHeader title="تعديل بيانات الشركة" />
-      <Card className="max-w-3xl p-5">
-        <CompanyForm company={company} focusTax={tab === 'tax'} />
-      </Card>
+      <div className="grid gap-6 xl:grid-cols-3">
+        <Card className="p-5 xl:col-span-2">
+          <CompanyForm company={company} focusTax={tab === 'tax'} cancelHref={`/companies/${id}`} />
+        </Card>
+        <SideTips
+          items={[
+            'الحقول الإلزامية: اسم الشركة، الشخص المسؤول، والهاتف أو البريد الإلكتروني.',
+            'اترك كلمة مرور المنظومة الضريبية فارغة للإبقاء على المحفوظة.',
+            'المرفقات (السجل التجاري، البطاقة الضريبية، ملفات أخرى) تُدار من صفحة الشركة.',
+          ]}
+          links={[{ href: `/companies/${id}`, label: 'العودة لصفحة الشركة' }]}
+        />
+      </div>
     </>
   )
 }

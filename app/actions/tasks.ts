@@ -166,19 +166,26 @@ export async function saveTask(_: FormState, fd: FormData): Promise<FormState> {
 
   const next = str(fd, 'next')
   if (str(fd, 'again') === '1') redirect(`/tasks/new?company=${companyId}&added=1`)
-  redirect(next.startsWith('/') ? next : `/tasks/${taskId}`)
+  redirect(next.startsWith('/') ? next : `/tasks/${taskId}?msg=${id ? 'task_saved' : 'task_created'}`)
 }
 
-export async function setTaskStatus(id: string, status: TaskStatus) {
+/** Changes a task's status and returns the previous one (so the UI can offer "تراجع" / undo). */
+export async function setTaskStatus(id: string, status: TaskStatus): Promise<TaskStatus | null> {
   const { user, org } = await requireSession()
-  if (!STATUSES.includes(status)) return
+  if (!STATUSES.includes(status)) return null
   const t = await taskInOrg(id, org.id)
-  if (!t || t.status === status) return
+  if (!t || t.status === status) return null
   await query('update tasks set status = $3, updated_by = $4 where id = $1 and org_id = $2', [id, org.id, status, user.id])
   await logActivity({ orgId: org.id, taskId: id, userId: user.id, action: 'status', details: { from: t.status, to: status } })
   await afterChange(org, id, status)
   if (!isOpen(status)) await advanceSeries(org, id)
   revalidatePath('/', 'layout')
+  return t.status
+}
+
+/** Form-action variant of setTaskStatus (forms need a void return). */
+export async function setStatusAction(id: string, status: TaskStatus) {
+  await setTaskStatus(id, status)
 }
 
 export async function duplicateTask(id: string) {
@@ -203,14 +210,14 @@ export async function duplicateTask(id: string) {
   if (!newId) redirect('/tasks')
   await afterChange(org, newId, 'not_started')
   revalidatePath('/', 'layout')
-  redirect(`/tasks/${newId}?copied=1`)
+  redirect(`/tasks/${newId}?msg=task_copied`)
 }
 
 export async function deleteTask(id: string) {
   const { org } = await requireSession()
   await query('delete from tasks where id = $1 and org_id = $2', [id, org.id])
   revalidatePath('/', 'layout')
-  redirect('/tasks')
+  redirect('/tasks?msg=task_deleted')
 }
 
 export async function stopRecurrence(taskId: string) {

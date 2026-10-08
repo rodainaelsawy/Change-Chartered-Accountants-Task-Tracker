@@ -61,3 +61,4 @@ function counted(n: number, one: string, two: string, few: string, many: string)
 }
 export const tasksCount = (n: number) => counted(n, 'مهمة واحدة', 'مهمتان', 'مهام', 'مهمة')
 export const companiesCount = (n: number) => counted(n, 'شركة واحدة', 'شركتان', 'شركات', 'شركة')
+export const daysCount = (n: number) => (n === 0 ? 'في نفس اليوم' : counted(n, 'يوم واحد', 'يومان', 'أيام', 'يومًا'))

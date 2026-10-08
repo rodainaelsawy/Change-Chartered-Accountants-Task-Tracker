@@ -93,14 +93,14 @@ export async function saveTemplate(_: FormState, fd: FormData): Promise<FormStat
   })
   if (!templateId) return { error: 'القالب غير موجود' }
   revalidatePath('/templates')
-  redirect(`/templates/${templateId}?saved=1`)
+  redirect(`/templates/${templateId}?msg=template_saved`)
 }
 
 export async function deleteTemplate(id: string) {
   const { org } = await requireSession()
   await query('delete from task_templates where id = $1 and org_id = $2', [id, org.id])
   revalidatePath('/templates')
-  redirect('/templates')
+  redirect('/templates?msg=template_deleted')
 }
 
 /** Creates all of a template's tasks for each selected company. */

@@ -6,12 +6,14 @@ import { Field, inputCls } from './ui'
 export function TemplateForm({
   template,
   items,
+  cancelHref,
 }: {
   template?: { id: string; name: string; description: string | null }
   items: TemplateItem[]
+  cancelHref?: string
 }) {
   return (
-    <ActionForm action={saveTemplate} submitLabel={template ? 'حفظ القالب' : 'إنشاء القالب'}>
+    <ActionForm action={saveTemplate} submitLabel={template ? 'حفظ القالب' : 'إنشاء القالب'} cancelHref={cancelHref}>
       {template && <input type="hidden" name="id" value={template.id} />}
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="اسم القالب">

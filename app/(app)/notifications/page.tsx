@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { BackButton } from '@/components/back-button'
 import { revalidatePath } from 'next/cache'
 import { SubmitButton } from '@/components/submit-button'
 import { Card, Empty, PageHeader, btn } from '@/components/ui'
@@ -57,6 +58,7 @@ export default async function NotificationsPage() {
 
   return (
     <>
+      <BackButton />
       <PageHeader
         title="التنبيهات"
         subtitle={unread ? `${unread} غير مقروءة` : 'لا توجد تنبيهات جديدة'}

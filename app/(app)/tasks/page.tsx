@@ -1,8 +1,6 @@
 import Link from 'next/link'
-import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
 import { RememberFilters } from '@/components/remember-filters'
-import { TASK_FILTERS_COOKIE } from '@/lib/filters-cookie'
+import { rememberedFilters } from '@/lib/remember-filters'
 import { TaskList } from '@/components/task-list'
 import { Card, PageHeader, btn, inputCls } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
@@ -18,19 +16,7 @@ type SP = Promise<Record<string, string | string[] | undefined>>
 export default async function TasksPage({ searchParams }: { searchParams: SP }) {
   const { org, user } = await requireSession()
   const sp = await searchParams
-  const get = (k: string) => (typeof sp[k] === 'string' ? (sp[k] as string) : '')
-
-  // Coming back to the list without filters in the URL → re-apply the last filters used (unless "مسح الفلاتر" was pressed).
-  if (!Object.keys(sp).some((k) => (TASK_FILTER_KEYS as readonly string[]).includes(k)) && !get('reset')) {
-    const raw = (await cookies()).get(TASK_FILTERS_COOKIE)?.value
-    if (raw) {
-      const saved = new URLSearchParams(decodeURIComponent(raw))
-      const qs = filterQuery((k) => saved.get(k) ?? '')
-      const msg = get('msg')
-      if (qs) redirect(`/tasks?${qs}${msg ? `&msg=${encodeURIComponent(msg)}` : ''}`)
-    }
-  }
-  const current = filterQuery(get)
+  const { get, qs: current, reset } = await rememberedFilters('tasks', sp, TASK_FILTER_KEYS)
   const tabHref = (assignee: string) => {
     const qs = filterQuery(get, { assignee })
     return qs ? `/tasks?${qs}` : '/tasks?reset=1'
@@ -133,7 +119,7 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
             </label>
             <button className={btn.primary}>تطبيق</button>
             <span className="ms-auto flex gap-2">
-              <a href={`/api/export/tasks?${new URLSearchParams(Object.entries(sp).filter(([, v]) => typeof v === 'string') as [string, string][])}`} className={btn.secondary}>
+              <a href={`/api/export/tasks?${new URLSearchParams(current)}`} className={btn.secondary}>
                 تصدير Excel
               </a>
               <PrintButton className={btn.secondary} />
@@ -147,7 +133,7 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
         </form>
       </Card>
 
-      <RememberFilters qs={current} reset={Boolean(get('reset'))} />
+      <RememberFilters page="tasks" qs={current} reset={reset} />
       <Card className="overflow-hidden">
         <TaskList tasks={tasks} today={today} empty={filtered ? 'لا توجد مهام مطابقة' : 'لا توجد مهام بعد'} />
       </Card>

@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { RememberFilters } from '@/components/remember-filters'
+import { rememberedFilters } from '@/lib/remember-filters'
 import { Card, PageHeader, btn, urgency } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
 import { query } from '@/lib/db'
@@ -35,10 +37,12 @@ function TaskChip({ t, today }: { t: Task; today: string }) {
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; scope?: string; company?: string; closed?: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const { org, user } = await requireSession()
-  const sp = await searchParams
+  const raw = await searchParams
+  const remembered = await rememberedFilters('calendar', raw, ['scope', 'company', 'closed'])
+  const sp = { month: typeof raw.month === 'string' ? raw.month : undefined, scope: remembered.get('scope'), company: remembered.get('company') || undefined, closed: remembered.get('closed') }
   const today = todayIn(org.timezone)
   const month = /^\d{4}-\d{2}$/.test(sp.month ?? '') ? sp.month! : today.slice(0, 7)
   const first = `${month}-01`
@@ -81,6 +85,7 @@ export default async function CalendarPage({
 
   return (
     <>
+      <RememberFilters page="calendar" qs={remembered.qs} reset={remembered.reset} />
       <PageHeader
         title="التقويم"
         subtitle={`${tasksCount(tasks.length)} في ${monthFmt.format(new Date(first + 'T00:00:00Z'))}`}

@@ -1,33 +1,27 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
-import { TASK_FILTERS_COOKIE } from '@/lib/filters-cookie'
-
-function savedFilters() {
-  const m = document.cookie.match(new RegExp(`(?:^|; )${TASK_FILTERS_COOKIE}=([^;]*)`))
-  return m ? decodeURIComponent(m[1]) : ''
-}
-
 /**
- Remembers the task-list filters (in a cookie) so they stay applied after leaving and coming back to /tasks.
- The page redirects to the saved filters on a full load; this also covers in-app navigation served from the router cache.
+ Saves a list page's filters (cookie per page) so they stay applied after leaving the page and coming back.
+ When the page was opened without filters in the URL and the saved ones were used, they are also put back in the URL.
 */
-export function RememberFilters({ qs, reset }: { qs: string; reset: boolean }) {
-  const router = useRouter()
+export function RememberFilters({ page, qs, reset }: { page: string; qs: string; reset: boolean }) {
   useEffect(() => {
-    if (!qs && !reset) {
-      const saved = savedFilters()
-      if (saved) {
-        const msg = new URLSearchParams(window.location.search).get('msg')
-        router.replace(`/tasks?${saved}${msg ? `&msg=${encodeURIComponent(msg)}` : ''}`)
-        return
-      }
-    }
+    const name = `filters_${page}`
     document.cookie = qs
-      ? `${TASK_FILTERS_COOKIE}=${encodeURIComponent(qs)}; path=/; max-age=31536000; samesite=lax`
-      : `${TASK_FILTERS_COOKIE}=; path=/; max-age=0; samesite=lax`
-  }, [qs, reset, router])
+      ? `${name}=${encodeURIComponent(qs)}; path=/; max-age=31536000; samesite=lax`
+      : `${name}=; path=/; max-age=0; samesite=lax`
+    if (!qs || reset) return
+    // After the router has written its own URL for this navigation.
+    const t = setTimeout(() => {
+      const url = new URLSearchParams(window.location.search)
+      const saved = new URLSearchParams(qs)
+      if ([...saved.keys()].some((k) => url.has(k))) return
+      saved.forEach((v, k) => url.set(k, v))
+      window.history.replaceState(window.history.state, '', `${window.location.pathname}?${url}`)
+    }, 50)
+    return () => clearTimeout(t)
+  }, [page, qs, reset])
   return null
 }

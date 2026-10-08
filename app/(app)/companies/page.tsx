@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { RememberFilters } from '@/components/remember-filters'
+import { rememberedFilters } from '@/lib/remember-filters'
 import { Card, Empty, PageHeader, btn, inputCls } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
 import { query } from '@/lib/db'
@@ -20,11 +22,11 @@ type Row = {
   next_deadline: string | null
 }
 
-export default async function CompaniesPage({ searchParams }: { searchParams: Promise<{ q?: string; archived?: string }> }) {
+export default async function CompaniesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { org } = await requireSession()
-  const sp = await searchParams
-  const q = (sp.q ?? '').trim()
-  const archived = sp.archived === '1'
+  const remembered = await rememberedFilters('companies', await searchParams, ['q', 'archived'])
+  const q = remembered.get('q').trim()
+  const archived = remembered.get('archived') === '1'
   const today = todayIn(org.timezone)
 
   const rows = await query<Row>(
@@ -44,6 +46,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
+      <RememberFilters page="companies" qs={remembered.qs} reset={remembered.reset} />
       <PageHeader
         title={archived ? 'الشركات المؤرشفة' : 'الشركات'}
         subtitle={companiesCount(rows.length)}
@@ -63,7 +66,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
           <input name="q" defaultValue={q} placeholder="بحث بالاسم أو النشاط أو الهاتف…" className={`${inputCls} max-w-sm`} />
           {archived && <input type="hidden" name="archived" value="1" />}
           <button className={btn.primary}>بحث</button>
-          <Link href={archived ? '/companies' : '/companies?archived=1'} className={`${btn.ghost} ms-auto`}>
+          <Link href={archived ? '/companies?archived=0' : '/companies?archived=1'} className={`${btn.ghost} ms-auto`}>
             {archived ? 'عرض الشركات الحالية' : 'عرض المؤرشفة'}
           </Link>
         </form>

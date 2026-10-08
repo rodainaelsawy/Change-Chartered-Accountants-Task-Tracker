@@ -83,7 +83,7 @@ Add `&force=1` to send today's digest again (useful when testing email settings)
 
 ## Production
 
-The app is a standard Next.js server: `npm run build && npm start`. Point `DATABASE_URL` at a Postgres the server can reach, for example your own server, Supabase, Neon or Railway. A laptop database is for development only. Run `npm run db:migrate` against the production database when deploying a new version.
+The app is a standard Next.js server: `npm run build && npm start`. Point `DATABASE_URL` at a Postgres the server can reach, for example your own server, Supabase, Neon or Railway. A laptop database is for development only. On Vercel, production deploys (merges to `main`) apply new database migrations automatically before building (`scripts/migrate-on-deploy.mjs`); if a migration fails, the deploy fails and the previous version stays online. Preview deploys never touch the database.
 
 ## Project structure
 

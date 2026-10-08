@@ -5,7 +5,7 @@ Task & deadline tracker for an accounting office. Arabic-only UI, RTL (`<html la
 ## Stack and conventions
 - **Next.js 16** App Router. APIs differ from older versions: read `node_modules/next/dist/docs/` before using a Next API you are unsure about. `params` / `searchParams` / `cookies()` are async. Cache Components are **not** enabled; pages that read the DB are dynamic.
 - **Database:** plain PostgreSQL through `pg` (`lib/db.ts`: `query`, `one`, `tx`). No ORM.
-  - Schema changes = a **new** numbered file in `db/migrations/` (e.g. `002_recurring_tasks.sql`), applied with `npm run db:migrate`. Never edit a migration that has been applied.
+  - Schema changes = a **new** numbered file in `db/migrations/` (e.g. `002_recurring_tasks.sql`), applied with `npm run db:migrate` (and automatically on Vercel production deploys via `scripts/migrate-on-deploy.mjs`, run by `npm run build`). Never edit a migration that has been applied. Migrations must keep the previous code version working (additive changes), because they run just before the new code goes live.
   - DATE columns come back as `'YYYY-MM-DD'` strings (type parser in `lib/db.ts`). Deadlines are dates only; "today" = `todayIn(org.timezone)` from `lib/dates.ts`.
 - **Auth:** own sessions (`sessions` table, httpOnly cookie) in `lib/auth.ts`. Every server action and page must call `requireSession()` / `requireAdmin()` and scope every query by `org_id`.
 - **Mutations:** server actions in `app/actions/*.ts`. Forms that show errors use `components/action-form.tsx` (actions return `{ error } | { ok }` or `redirect`).

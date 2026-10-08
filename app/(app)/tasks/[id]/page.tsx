@@ -4,7 +4,6 @@ import { deleteTask, duplicateTask, setStatusAction, stopRecurrence } from '@/ap
 import { ConfirmButton } from '@/components/action-form'
 import { TaskChecklist, type ChecklistItem } from '@/components/task-checklist'
 import { TaskComments } from '@/components/task-comments'
-import { TaskForm } from '@/components/task-form'
 import { SubmitButton } from '@/components/submit-button'
 import { Card, Crumbs, DueText, PageHeader, PriorityText, StatusBadge, btn } from '@/components/ui'
 import { describeActivity } from '@/lib/activity'
@@ -12,21 +11,13 @@ import { requireSession } from '@/lib/auth'
 import { one, query } from '@/lib/db'
 import { formatDate, formatDateTime, todayIn } from '@/lib/dates'
 import { FREQ_LABEL, daysCount, isOpen } from '@/lib/labels'
-import { companyOptions, teamMembers } from '@/lib/queries'
 import type { RecurrenceFreq, Task } from '@/lib/types'
 
 export const metadata = { title: 'تفاصيل المهمة' }
 
-export default async function TaskPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>
-  searchParams: Promise<{ edit?: string }>
-}) {
+export default async function TaskPage({ params }: { params: Promise<{ id: string }> }) {
   const { org, user } = await requireSession()
   const { id } = await params
-  const { edit } = await searchParams
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
 
   const task = await one<Task>(
@@ -39,9 +30,7 @@ export default async function TaskPage({
   )
   if (!task) notFound()
 
-  const [companies, team, assignees, checklist, comments, activity, series] = await Promise.all([
-    companyOptions(org.id, task.company_id),
-    teamMembers(org.id),
+  const [assignees, checklist, comments, activity, series] = await Promise.all([
     query<{ id: string; full_name: string; active: boolean }>(
       'select u.id, u.full_name, u.active from task_assignees a join users u on u.id = a.user_id where a.task_id = $1 order by u.full_name',
       [id],
@@ -92,9 +81,9 @@ export default async function TaskPage({
                 <SubmitButton className={btn.secondary}>بدء التنفيذ</SubmitButton>
               </form>
             )}
-            <a href="?edit=1#edit" className={btn.secondary}>
+            <Link href={`/tasks/${task.id}/edit`} className={btn.secondary}>
               تعديل
-            </a>
+            </Link>
             {open ? (
               <form action={setStatusAction.bind(null, task.id, 'done')}>
                 <SubmitButton className={btn.primary}>✓ تحديد كمنجزة</SubmitButton>
@@ -138,27 +127,6 @@ export default async function TaskPage({
             />
           </Card>
 
-          <Card className="scroll-mt-24 p-0" id="edit">
-            <details open={Boolean(edit)} className="group">
-              <summary className="flex cursor-pointer list-none items-center justify-between p-5 font-semibold">
-                تعديل بيانات المهمة
-                <span className="text-sm font-normal text-brand-700 group-open:hidden">فتح ▾</span>
-                <span className="hidden text-sm font-normal text-slate-500 group-open:inline">إغلاق ▴</span>
-              </summary>
-              <div className="border-t border-slate-100 p-5">
-            <TaskForm
-              task={task}
-              companies={companies}
-              team={team}
-              assigneeIds={assignees.map((a) => a.id)}
-              defaultDeadline={task.deadline}
-              orgReminderDays={org.reminder_days}
-              today={today}
-              cancelHref={`/tasks/${task.id}`}
-            />
-              </div>
-            </details>
-          </Card>
         </div>
 
         <div className="space-y-4">

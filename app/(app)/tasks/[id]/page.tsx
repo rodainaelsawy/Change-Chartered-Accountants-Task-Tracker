@@ -1,15 +1,18 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { deleteTask, duplicateTask, setTaskStatus } from '@/app/actions/tasks'
+import { deleteTask, duplicateTask, setTaskStatus, stopRecurrence } from '@/app/actions/tasks'
 import { ConfirmButton } from '@/components/action-form'
+import { TaskChecklist, type ChecklistItem } from '@/components/task-checklist'
+import { TaskComments } from '@/components/task-comments'
 import { TaskForm } from '@/components/task-form'
 import { Alert, Card, DueText, PageHeader, StatusBadge, btn } from '@/components/ui'
+import { describeActivity } from '@/lib/activity'
 import { requireSession } from '@/lib/auth'
-import { one } from '@/lib/db'
+import { one, query } from '@/lib/db'
 import { formatDate, formatDateTime, todayIn } from '@/lib/dates'
-import { isOpen } from '@/lib/labels'
-import { companyOptions } from '@/lib/queries'
-import type { Task } from '@/lib/types'
+import { FREQ_LABEL, isOpen } from '@/lib/labels'
+import { companyOptions, teamMembers } from '@/lib/queries'
+import type { RecurrenceFreq, Task } from '@/lib/types'
 
 export const metadata = { title: 'تفاصيل المهمة' }
 
@@ -20,7 +23,7 @@ export default async function TaskPage({
   params: Promise<{ id: string }>
   searchParams: Promise<{ copied?: string }>
 }) {
-  const { org } = await requireSession()
+  const { org, user } = await requireSession()
   const { id } = await params
   const { copied } = await searchParams
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
@@ -34,7 +37,37 @@ export default async function TaskPage({
     [id, org.id],
   )
   if (!task) notFound()
-  const companies = await companyOptions(org.id, task.company_id)
+
+  const [companies, team, assignees, checklist, comments, activity, series] = await Promise.all([
+    companyOptions(org.id, task.company_id),
+    teamMembers(org.id),
+    query<{ id: string; full_name: string; active: boolean }>(
+      'select u.id, u.full_name, u.active from task_assignees a join users u on u.id = a.user_id where a.task_id = $1 order by u.full_name',
+      [id],
+    ),
+    query<ChecklistItem>(
+      `select i.id, i.title, i.done, u.full_name as done_by_name
+         from task_checklist_items i left join users u on u.id = i.done_by
+        where i.task_id = $1 order by i.position, i.created_at`,
+      [id],
+    ),
+    query<{ id: string; body: string; user_id: string | null; author: string | null; created_at: Date; updated_at: Date | null }>(
+      `select c.id, c.body, c.user_id, u.full_name as author, c.created_at, c.updated_at
+         from task_comments c left join users u on u.id = c.user_id
+        where c.task_id = $1 order by c.created_at`,
+      [id],
+    ),
+    query<{ id: string; action: string; details: Record<string, unknown>; who: string | null; user_id: string | null; created_at: Date }>(
+      `select a.id, a.action, a.details, a.user_id, u.full_name as who, a.created_at
+         from task_activity a left join users u on u.id = a.user_id
+        where a.task_id = $1 order by a.created_at desc, a.id desc limit 100`,
+      [id],
+    ),
+    task.series_id
+      ? one<{ frequency: RecurrenceFreq; active: boolean }>('select frequency, active from task_series where id = $1', [task.series_id])
+      : Promise.resolve(null),
+  ])
+
   const today = todayIn(org.timezone)
   const open = isOpen(task.status)
 
@@ -52,6 +85,7 @@ export default async function TaskPage({
             <StatusBadge status={task.status} />
             <span>موعد التسليم {formatDate(task.deadline)}</span>
             <DueText status={task.status} deadline={task.deadline} today={today} />
+            {series && <span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs text-violet-800">↻ {FREQ_LABEL[series.frequency]}</span>}
           </span>
         }
         actions={
@@ -81,27 +115,84 @@ export default async function TaskPage({
       )}
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="p-5 lg:col-span-2">
-          <h2 className="mb-4 font-semibold">تعديل المهمة</h2>
-          <TaskForm task={task} companies={companies} defaultDeadline={task.deadline} orgReminderDays={org.reminder_days} />
-        </Card>
+        <div className="space-y-6 lg:col-span-2">
+          <Card className="p-5">
+            <h2 className="mb-3 font-semibold">خطوات المهمة</h2>
+            <TaskChecklist taskId={task.id} items={checklist} />
+          </Card>
+
+          <Card className="p-5">
+            <h2 className="mb-3 font-semibold">التعليقات ({comments.length})</h2>
+            <TaskComments
+              taskId={task.id}
+              comments={comments.map((c) => ({
+                id: c.id,
+                body: c.body,
+                author: c.author,
+                mine: c.user_id === user.id,
+                canDelete: c.user_id === user.id || user.role === 'admin',
+                when: formatDateTime(c.created_at, org.timezone),
+                edited: Boolean(c.updated_at),
+              }))}
+            />
+          </Card>
+
+          <Card className="p-5">
+            <h2 className="mb-4 font-semibold">تعديل المهمة</h2>
+            <TaskForm
+              task={task}
+              companies={companies}
+              team={team}
+              assigneeIds={assignees.map((a) => a.id)}
+              defaultDeadline={task.deadline}
+              orgReminderDays={org.reminder_days}
+            />
+          </Card>
+        </div>
 
         <div className="space-y-4">
           <Card className="p-5 text-sm">
-            <h2 className="mb-3 font-semibold">السجل</h2>
-            <dl className="space-y-2 text-slate-600">
+            <h2 className="mb-3 font-semibold">التفاصيل</h2>
+            <dl className="space-y-3 text-slate-600">
+              <div>
+                <dt className="text-xs text-slate-400">المسؤولون</dt>
+                <dd className="mt-1 flex flex-wrap gap-1">
+                  {assignees.map((a) => (
+                    <span
+                      key={a.id}
+                      className={`rounded-full px-2 py-0.5 text-xs ${a.active ? 'bg-brand-50 text-brand-800' : 'bg-slate-100 text-slate-400 line-through'}`}
+                    >
+                      {a.full_name}
+                    </span>
+                  ))}
+                </dd>
+              </div>
+              {series && (
+                <div>
+                  <dt className="text-xs text-slate-400">التكرار</dt>
+                  <dd>
+                    {series.active ? (
+                      <>
+                        {FREQ_LABEL[series.frequency]} — تُنشأ المرة التالية تلقائيًا عند الإنجاز أو حلول الموعد.
+                        <ConfirmButton
+                          action={stopRecurrence.bind(null, task.id)}
+                          confirmText="إيقاف التكرار؟ لن تُنشأ مهام جديدة من هذه السلسلة (المهام الموجودة تبقى كما هي)."
+                          className="mt-2 rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
+                        >
+                          إيقاف التكرار
+                        </ConfirmButton>
+                      </>
+                    ) : (
+                      <span className="text-slate-400">تم إيقاف التكرار</span>
+                    )}
+                  </dd>
+                </div>
+              )}
               <div>
                 <dt className="text-xs text-slate-400">أُنشئت</dt>
                 <dd>
                   {formatDateTime(task.created_at, org.timezone)}
-                  {task.created_by_name && ` — ${task.created_by_name}`}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-400">آخر تعديل</dt>
-                <dd>
-                  {formatDateTime(task.updated_at, org.timezone)}
-                  {task.updated_by_name && ` — ${task.updated_by_name}`}
+                  {task.created_by_name ? ` — ${task.created_by_name}` : series ? ' — تلقائيًا' : ''}
                 </dd>
               </div>
               {task.completed_at && (
@@ -112,6 +203,27 @@ export default async function TaskPage({
               )}
             </dl>
           </Card>
+
+          <Card className="p-5 text-sm">
+            <h2 className="mb-3 font-semibold">السجل</h2>
+            {activity.length === 0 ? (
+              <p className="text-slate-500">لا يوجد سجل بعد.</p>
+            ) : (
+              <ol className="relative space-y-3 border-s border-slate-200 ps-4">
+                {activity.map((a) => (
+                  <li key={a.id} className="relative">
+                    <span className="absolute -start-[21px] top-1.5 h-2 w-2 rounded-full bg-slate-300" />
+                    <p className="text-slate-700">
+                      <span className="font-medium">{a.user_id ? (a.who ?? 'مستخدم محذوف') : 'النظام'}</span>{' '}
+                      {describeActivity(a.action, a.details)}
+                    </p>
+                    <p className="text-xs text-slate-400">{formatDateTime(a.created_at, org.timezone)}</p>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </Card>
+
           <Card className="space-y-2 p-5">
             <form action={duplicateTask.bind(null, task.id)}>
               <button className={`${btn.secondary} w-full`}>نسخ المهمة</button>

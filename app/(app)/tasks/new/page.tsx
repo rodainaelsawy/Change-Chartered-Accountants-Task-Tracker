@@ -3,7 +3,7 @@ import { TaskForm } from '@/components/task-form'
 import { Alert, Card, PageHeader, btn } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
 import { addDays, todayIn } from '@/lib/dates'
-import { companyOptions } from '@/lib/queries'
+import { companyOptions, teamMembers } from '@/lib/queries'
 
 export const metadata = { title: 'مهمة جديدة' }
 
@@ -12,9 +12,9 @@ export default async function NewTaskPage({
 }: {
   searchParams: Promise<{ company?: string; added?: string }>
 }) {
-  const { org } = await requireSession()
+  const { org, user } = await requireSession()
   const sp = await searchParams
-  const companies = await companyOptions(org.id)
+  const [companies, team] = await Promise.all([companyOptions(org.id), teamMembers(org.id)])
 
   return (
     <>
@@ -35,6 +35,8 @@ export default async function NewTaskPage({
         ) : (
           <TaskForm
             companies={companies}
+            team={team}
+            assigneeIds={[user.id]}
             defaultCompanyId={sp.company}
             defaultDeadline={addDays(todayIn(org.timezone), 7)}
             orgReminderDays={org.reminder_days}

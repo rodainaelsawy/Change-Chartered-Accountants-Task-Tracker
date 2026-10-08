@@ -7,6 +7,7 @@ import type { Task } from './types'
 export type TaskFilters = {
   q?: string
   company?: string
+  assignee?: string // a user id
   status?: string // 'open' (default) | 'all' | 'closed' | a TaskStatus
   priority?: string
   due?: string // 'overdue' | 'today' | 'week' | 'later' | ''
@@ -23,8 +24,16 @@ const SORTS: Record<string, string> = {
 
 export const TASK_SELECT = `
   select t.id, t.company_id, c.name as company_name, t.title, t.description, t.deadline, t.priority, t.status,
-         t.reminder_days, t.created_at, t.updated_at, t.completed_at
+         t.reminder_days, t.created_at, t.updated_at, t.completed_at, t.series_id,
+         coalesce((select json_agg(json_build_object('id', u.id, 'name', u.full_name) order by u.full_name)
+                     from task_assignees a join users u on u.id = a.user_id where a.task_id = t.id), '[]') as assignees,
+         (select count(*)::int from task_checklist_items i where i.task_id = t.id) as checklist_total,
+         (select count(*)::int from task_checklist_items i where i.task_id = t.id and i.done) as checklist_done
     from tasks t join companies c on c.id = t.company_id`
+
+/** SQL condition: task is assigned to the user in parameter `param`. */
+export const assignedTo = (param: string) =>
+  `exists (select 1 from task_assignees ax where ax.task_id = t.id and ax.user_id = ${param})`
 
 export async function listTasks(orgId: string, f: TaskFilters, today: string, limit = 500): Promise<Task[]> {
   const where: string[] = ['t.org_id = $1']
@@ -40,6 +49,7 @@ export async function listTasks(orgId: string, f: TaskFilters, today: string, li
   else if ((STATUSES as string[]).includes(status)) where.push(`t.status = ${p(status)}`)
 
   if (f.company) where.push(`t.company_id = ${p(f.company)}`)
+  if (f.assignee && /^[0-9a-f-]{36}$/i.test(f.assignee)) where.push(assignedTo(p(f.assignee)))
   if (f.priority && (PRIORITIES as string[]).includes(f.priority)) where.push(`t.priority = ${p(f.priority)}`)
 
   if (f.due === 'overdue') where.push(`t.deadline < ${p(today)} and t.status in ('${OPEN_STATUSES.join("','")}')`)
@@ -60,5 +70,12 @@ export async function companyOptions(orgId: string, includeId?: string) {
   return query<{ id: string; name: string }>(
     `select id, name from companies where org_id = $1 and (archived_at is null or id = $2) order by name`,
     [orgId, includeId ?? null],
+  )
+}
+
+export async function teamMembers(orgId: string) {
+  return query<{ id: string; full_name: string; active: boolean }>(
+    'select id, full_name, active from users where org_id = $1 order by active desc, full_name',
+    [orgId],
   )
 }

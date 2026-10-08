@@ -3,6 +3,7 @@ import { query } from './db'
 import { addDays, formatDate, relativeDue, todayIn } from './dates'
 import { PRIORITY_LABEL } from './labels'
 import { appUrl, emailLayout, escapeHtml, sendMail } from './mail'
+import { ensureNextOccurrences } from './recurrence'
 import type { Org, TaskPriority } from './types'
 
 /*
@@ -10,11 +11,21 @@ import type { Org, TaskPriority } from './types'
   - due_soon : once, when a task is within its reminder window (task.reminder_days ?? org.reminder_days, default 2)
   - due_today: once, on the deadline day
   - overdue  : every day after the deadline until the task is done or cancelled
- In v1 every active team member receives the reminders (no assignment yet).
+  - assigned : when someone is added as an assignee (not sent to the person who made the change)
+ Reminders go to the task's assignees (active users). A task without assignees (should not happen, kept as a
+ safety net) notifies every active team member.
  Done / cancelled tasks never produce reminders, and their unread reminders are cleared.
 */
 
 const OPEN = `('not_started','in_progress','on_hold')`
+
+/** Users who should receive a task's reminders. */
+const RECIPIENTS = `
+  select u.id from users u
+   where u.org_id = $1 and u.active
+     and (exists (select 1 from task_assignees a where a.task_id = d.task_id and a.user_id = u.id)
+          or not exists (select 1 from task_assignees a join users au on au.id = a.user_id and au.active
+                          where a.task_id = d.task_id))`
 
 /** Creates any in-app notifications that are due for open tasks (all, or one task). Idempotent. */
 export async function syncNotifications(org: Pick<Org, 'id' | 'timezone' | 'reminder_days'>, taskId?: string) {
@@ -39,21 +50,40 @@ export async function syncNotifications(org: Pick<Org, 'id' | 'timezone' | 'remi
           and t.deadline <= $2::date + coalesce(t.reminder_days, $3)
      )
      insert into notifications (org_id, user_id, task_id, kind, notify_date)
-     select $1, u.id, d.task_id, d.kind, d.notify_date
-       from due d cross join users u
-      where u.org_id = $1 and u.active
+     select $1, r.id, d.task_id, d.kind, d.notify_date
+       from due d cross join lateral (${RECIPIENTS}) r
      on conflict do nothing`,
     params,
   )
 }
 
+/** "A task was assigned to you" for newly added assignees (except the person who did it). */
+export async function notifyAssigned(org: Pick<Org, 'id' | 'timezone'>, taskId: string, userIds: string[], actorId: string) {
+  const ids = userIds.filter((u) => u !== actorId)
+  if (!ids.length) return
+  await query(
+    `insert into notifications (org_id, user_id, task_id, kind, notify_date)
+     select $1, u, $2, 'assigned', $3 from unnest($4::uuid[]) u
+     on conflict do nothing`,
+    [org.id, taskId, todayIn(org.timezone), ids],
+  )
+}
+
 /** Marks a closed task's unread reminders as read (FR-5.7). */
 export async function clearTaskNotifications(taskId: string) {
-  await query('update notifications set read_at = now() where task_id = $1 and read_at is null', [taskId])
+  await query(`update notifications set read_at = now() where task_id = $1 and read_at is null and kind <> 'assigned'`, [taskId])
+}
+
+/** Creates due recurring occurrences (at most one new one per series per pass). */
+export async function runRecurrence(org: Pick<Org, 'id' | 'timezone'>) {
+  for (let i = 0; i < 60; i++) {
+    const created = await ensureNextOccurrences(org)
+    if (!created.length) break
+  }
 }
 
 /**
- Daily run: creates notifications and sends each user the morning digest email.
+ Daily run: creates recurring occurrences and notifications, then sends each user the morning digest email.
  Runs at most once per org per day; returns false if it already ran today.
 */
 export async function runDaily(
@@ -69,6 +99,7 @@ export async function runDaily(
   )
   if (!claimed.length) return false
 
+  await runRecurrence(org)
   await syncNotifications(org)
   if (opts.deferEmail) opts.deferEmail(() => sendDigests(org, today))
   else await sendDigests(org, today)
@@ -85,16 +116,27 @@ type DigestTask = {
 }
 
 async function sendDigests(org: Org, today: string) {
-  const weekEnd = addDays(today, 7)
-  const tasks = await query<DigestTask>(
-    `select t.id, t.title, t.deadline, t.priority, t.reminder_days, c.name as company_name
-       from tasks t join companies c on c.id = t.company_id
-      where t.org_id = $1 and t.status in ${OPEN} and t.deadline <= $2
-      order by t.deadline, t.priority desc`,
-    [org.id, weekEnd],
+  const users = await query<{ id: string; email: string }>(
+    'select id, email from users where org_id = $1 and active and email_digest and password_hash is not null',
+    [org.id],
   )
-  if (!tasks.length) return
+  for (const u of users) {
+    // Each person gets only the tasks they are responsible for.
+    const tasks = await query<DigestTask>(
+      `select t.id, t.title, t.deadline, t.priority, t.reminder_days, c.name as company_name
+         from tasks t join companies c on c.id = t.company_id
+        where t.org_id = $1 and t.status in ${OPEN} and t.deadline <= $2
+          and (exists (select 1 from task_assignees a where a.task_id = t.id and a.user_id = $3)
+               or not exists (select 1 from task_assignees a join users au on au.id = a.user_id and au.active
+                               where a.task_id = t.id))
+        order by t.deadline, t.priority desc`,
+      [org.id, addDays(today, 7), u.id],
+    )
+    if (tasks.length) await sendMail(u.email, ...digest(org, today, tasks))
+  }
+}
 
+function digest(org: Org, today: string, tasks: DigestTask[]): [string, string] {
   const overdue = tasks.filter((t) => t.deadline < today)
   const dueToday = tasks.filter((t) => t.deadline === today)
   const reminder = tasks.filter(
@@ -125,14 +167,8 @@ async function sendDigests(org: Org, today: string) {
     `<p style="margin-top:24px"><a href="${appUrl('/')}" style="background:#0f766e;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">فتح لوحة المتابعة</a></p>`
 
   const subject =
-    `ملخص المهام — ${formatDate(today)}` +
+    `ملخص مهامك — ${formatDate(today)}` +
     (overdue.length ? ` · ${overdue.length} متأخرة` : '') +
     (dueToday.length ? ` · ${dueToday.length} اليوم` : '')
-
-  const users = await query<{ email: string }>(
-    'select email from users where org_id = $1 and active and email_digest and password_hash is not null',
-    [org.id],
-  )
-  const html = emailLayout('ملخص المهام اليومي', body)
-  for (const u of users) await sendMail(u.email, subject, html)
+  return [subject, emailLayout('ملخص مهامك اليومي', body)]
 }

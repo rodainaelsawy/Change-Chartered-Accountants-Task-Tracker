@@ -51,3 +51,13 @@ export function relativeDue(deadline: string, today: string): string {
   if (n < 0) return `متأخرة ${-n} ${-n <= 10 ? 'أيام' : 'يومًا'}`
   return `بعد ${n} ${n <= 10 ? 'أيام' : 'يومًا'}`
 }
+
+/** Adds `months` calendar months to an anchor date, keeping the anchor's day (or the month's last day if shorter). */
+export function addMonthsClamped(anchor: string, months: number): string {
+  const [y, m, d] = anchor.split('-').map(Number)
+  const total = y * 12 + (m - 1) + months
+  const ny = Math.floor(total / 12)
+  const nm = total % 12
+  const last = new Date(Date.UTC(ny, nm + 1, 0)).getUTCDate()
+  return `${ny}-${String(nm + 1).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`
+}

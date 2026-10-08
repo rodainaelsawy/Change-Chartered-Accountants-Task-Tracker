@@ -35,10 +35,15 @@ input[type='date'] {
   box-shadow: 0 0 0 3px #fee2e2 !important;
 }
 
-label[data-error]::after {
+label[data-error]::after,
+[data-group][data-error]::after {
   content: attr(data-error);
   display: block;
   margin-top: 0.25rem;
   font-size: 0.75rem;
   color: #b91c1c;
+}
+
+[data-group][data-error] {
+  border-color: #dc2626 !important;
 }

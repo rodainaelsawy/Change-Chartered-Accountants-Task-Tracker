@@ -47,6 +47,7 @@ export function ActionForm({
   resetOnSuccess = false,
   footer,
   oneOf = [],
+  checkGroups = [],
   showRequiredNote = true,
 }: {
   action: (state: State, fd: FormData) => Promise<State>
@@ -57,6 +58,8 @@ export function ActionForm({
   resetOnSuccess?: boolean
   footer?: React.ReactNode
   oneOf?: { fields: string[]; message: string }[]
+  /** Checkbox groups (by name) where at least one box must be ticked; the container has data-group="name". */
+  checkGroups?: { name: string; message: string }[]
   showRequiredNote?: boolean
 }) {
   const [state, formAction, pending] = useActionState(action, undefined)
@@ -88,8 +91,19 @@ export function ActionForm({
         first ??= els[0]
       }
     }
-    if (first) {
-      first.focus()
+    let groupFailed = false
+    for (const g of checkGroups) {
+      const box = form.querySelector<HTMLElement>(`[data-group="${g.name}"]`)
+      const ticked = form.querySelectorAll(`input[type=checkbox][name="${g.name}"]:checked`).length > 0
+      if (ticked) box?.removeAttribute('data-error')
+      else {
+        box?.setAttribute('data-error', g.message)
+        groupFailed = true
+        first ??= form.querySelector<HTMLInputElement>(`input[type=checkbox][name="${g.name}"]`)
+      }
+    }
+    if (first || groupFailed) {
+      first?.focus()
       setSummary('يرجى استكمال الحقول المطلوبة الموضحة باللون الأحمر.')
       return false
     }
@@ -105,6 +119,11 @@ export function ActionForm({
       // Clear a field's error as soon as the user edits it.
       onInput={(e) => {
         const el = e.target as Control
+        if (el instanceof HTMLInputElement && el.type === 'checkbox') {
+          const box = el.closest('[data-group]')
+          if (box && ref.current?.querySelector(`input[type=checkbox][name="${el.name}"]:checked`)) box.removeAttribute('data-error')
+          return
+        }
         if (!el.closest('label')?.hasAttribute('data-error')) return
         let msg = arabicMessage(el)
         const group = oneOf.find((g) => g.fields.includes(el.name))

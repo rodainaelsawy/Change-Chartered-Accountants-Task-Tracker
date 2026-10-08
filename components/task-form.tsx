@@ -1,12 +1,16 @@
 import { saveTask } from '@/app/actions/tasks'
-import { PRIORITIES, PRIORITY_LABEL, STATUSES, STATUS_LABEL } from '@/lib/labels'
+import { FREQ_LABEL, PRIORITIES, PRIORITY_LABEL, STATUSES, STATUS_LABEL } from '@/lib/labels'
 import type { Task } from '@/lib/types'
 import { ActionForm } from './action-form'
-import { Field, btn, inputCls } from './ui'
+import { Field, RequiredMark, btn, inputCls } from './ui'
+
+export type TeamMember = { id: string; full_name: string; active: boolean }
 
 export function TaskForm({
   task,
   companies,
+  team,
+  assigneeIds,
   defaultCompanyId,
   defaultDeadline,
   orgReminderDays,
@@ -14,16 +18,23 @@ export function TaskForm({
 }: {
   task?: Task
   companies: { id: string; name: string }[]
+  team: TeamMember[]
+  /** Selected assignees (for a new task: the current user). */
+  assigneeIds: string[]
   defaultCompanyId?: string
   defaultDeadline: string
   orgReminderDays: number
   next?: string
 }) {
+  // Inactive members are listed only if they are already assigned to this task.
+  const members = team.filter((m) => m.active || assigneeIds.includes(m.id))
+  const recurring = Boolean(task?.series_id)
   return (
     <ActionForm
       action={saveTask}
       submitLabel={task ? 'حفظ التعديلات' : 'إضافة المهمة'}
       className="grid gap-4 sm:grid-cols-2"
+      checkGroups={[{ name: 'assignees', message: 'اختر مسؤولًا واحدًا على الأقل' }]}
       footer={
         !task && (
           <button type="submit" name="again" value="1" className={btn.secondary}>
@@ -49,9 +60,26 @@ export function TaskForm({
           ))}
         </select>
       </Field>
-      <Field label="موعد التسليم">
+      <Field label={recurring ? 'موعد التسليم (لهذه المرة)' : 'موعد التسليم'}>
         <input name="deadline" type="date" required defaultValue={task?.deadline ?? defaultDeadline} className={inputCls} />
       </Field>
+
+      <fieldset data-group="assignees" className="rounded-lg border border-slate-300 p-3 sm:col-span-2">
+        <legend className="px-1 text-sm font-medium text-slate-700">
+          المسؤولون
+          <RequiredMark />
+        </legend>
+        <div className="flex flex-wrap gap-x-5 gap-y-2">
+          {members.map((m) => (
+            <label key={m.id} className="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="assignees" value={m.id} defaultChecked={assigneeIds.includes(m.id)} className="h-4 w-4" />
+              <span className={m.active ? '' : 'text-slate-400 line-through'}>{m.full_name}</span>
+            </label>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-slate-500">تصل التذكيرات للمسؤولين فقط.</p>
+      </fieldset>
+
       <Field label="الأولوية">
         <select name="priority" required defaultValue={task?.priority ?? 'medium'} className={inputCls}>
           {PRIORITIES.map((p) => (
@@ -70,6 +98,26 @@ export function TaskForm({
           ))}
         </select>
       </Field>
+
+      {!recurring && (
+        <Field
+          label="التكرار"
+          hint={
+            task
+              ? 'عند اختيار التكرار يصبح موعد هذه المهمة هو أول موعد، وتُنشأ المهمة التالية تلقائيًا.'
+              : 'موعد التسليم أعلاه هو أول موعد. تُنشأ المهمة التالية تلقائيًا عند إنجاز الحالية أو حلول موعدها.'
+          }
+        >
+          <select name="recurrence" defaultValue="" className={inputCls}>
+            <option value="">بدون تكرار</option>
+            {Object.entries(FREQ_LABEL).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
       <Field
         label="التذكير قبل الموعد (أيام)"
         hint={`اتركه فارغًا لاستخدام الإعداد الافتراضي (${orgReminderDays} ${orgReminderDays === 2 ? 'يومان' : 'أيام'})`}
@@ -85,8 +133,13 @@ export function TaskForm({
         />
       </Field>
       <Field label="الوصف / ملاحظات" className="sm:col-span-2">
-        <textarea name="description" rows={4} defaultValue={task?.description ?? ''} className={inputCls} />
+        <textarea name="description" rows={3} defaultValue={task?.description ?? ''} className={inputCls} />
       </Field>
+      {!task && (
+        <Field label="خطوات المهمة (اختياري)" hint="سطر لكل خطوة. يمكنك تعديلها لاحقًا من صفحة المهمة." className="sm:col-span-2">
+          <textarea name="checklist" rows={3} placeholder={'جمع الفواتير\nمراجعة البيانات\nرفع الإقرار'} className={inputCls} />
+        </Field>
+      )}
     </ActionForm>
   )
 }

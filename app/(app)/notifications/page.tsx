@@ -37,6 +37,7 @@ const KIND_STYLE: Record<NotifKind, string> = {
   overdue: 'bg-red-100 text-red-700',
   due_today: 'bg-amber-100 text-amber-800',
   due_soon: 'bg-sky-100 text-sky-800',
+  assigned: 'bg-brand-50 text-brand-800',
 }
 
 export default async function NotificationsPage() {

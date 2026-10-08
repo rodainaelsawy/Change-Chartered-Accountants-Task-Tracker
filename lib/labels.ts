@@ -42,4 +42,12 @@ export const NOTIF_LABEL = {
   due_soon: 'اقترب موعد التسليم',
   due_today: 'موعد التسليم اليوم',
   overdue: 'تجاوزت موعد التسليم',
+  assigned: 'أُسندت إليك مهمة',
+} as const
+
+export const FREQ_LABEL = {
+  weekly: 'أسبوعيًا',
+  monthly: 'شهريًا',
+  quarterly: 'كل 3 أشهر',
+  yearly: 'سنويًا',
 } as const

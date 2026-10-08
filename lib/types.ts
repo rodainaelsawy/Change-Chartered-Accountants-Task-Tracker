@@ -1,7 +1,8 @@
 export type TaskStatus = 'not_started' | 'in_progress' | 'on_hold' | 'done' | 'cancelled'
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
 export type UserRole = 'admin' | 'member'
-export type NotifKind = 'due_soon' | 'due_today' | 'overdue'
+export type NotifKind = 'due_soon' | 'due_today' | 'overdue' | 'assigned'
+export type RecurrenceFreq = 'weekly' | 'monthly' | 'quarterly' | 'yearly'
 
 export interface Org {
   id: string
@@ -62,4 +63,9 @@ export interface Task {
   completed_at: Date | null
   created_by_name?: string | null
   updated_by_name?: string | null
+  series_id?: string | null
+  /** Filled by list queries */
+  assignees?: { id: string; name: string }[]
+  checklist_total?: number
+  checklist_done?: number
 }

@@ -52,6 +52,17 @@ export function TaskList({
                   </Link>
                 )}
                 <PriorityText priority={t.priority} />
+                {t.series_id && <span title="مهمة متكررة">↻ متكررة</span>}
+                {!!t.checklist_total && (
+                  <span className={t.checklist_done === t.checklist_total ? 'text-emerald-700' : ''} title="الخطوات المنجزة">
+                    ☑ {t.checklist_done}/{t.checklist_total}
+                  </span>
+                )}
+                {!!t.assignees?.length && (
+                  <span className="truncate" title="المسؤولون">
+                    👤 {t.assignees.map((a) => a.name.split(' ')[0]).join('، ')}
+                  </span>
+                )}
               </div>
             </div>
             <div className="shrink-0 text-left">

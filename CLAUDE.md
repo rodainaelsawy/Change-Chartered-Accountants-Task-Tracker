@@ -15,6 +15,8 @@ Task & deadline tracker for an accounting office. Arabic-only UI, RTL (`<html la
 - **Assignees:** `task_assignees` (one or more per task, mandatory). Reminders, the daily digest and "مهامي" are per assignee; a task with no active assignee falls back to everyone. New assignees get an `assigned` notification (not the person who made the change).
 - **Recurring tasks:** `task_series` (frequency + anchor = first deadline) and `tasks.series_id/occurrence_no`; logic in `lib/recurrence.ts`. Next occurrence is created when the latest is done/cancelled or its deadline arrives; periods already in the past are skipped; month-end clamp via `addMonthsClamped`. Copies assignees and checklist (unticked).
 - **Checklist / comments / history:** `task_checklist_items`, `task_comments` (author edits; author or admin deletes), `task_activity` — log every task change with `logActivity` and render with `describeActivity` (`lib/activity.ts`).
+- **Creating tasks:** always through `insertTask` (`lib/tasks.ts`) inside `tx`, then `notifyAssigned` + `syncNotifications` per new id. Used by the task form, bulk add (`/tasks/bulk`) and templates (`task_templates`, `task_template_items`: deadline = start date + `offset_days`).
+- **Calendar / reports / export:** `/calendar` (Saturday-first month grid, agenda on phones), `/reports` (`lib/reports.ts`: by deadline in range; on-time rate = done on time ÷ (done + overdue)), Excel via `lib/excel.ts` (`/api/export/tasks` uses the same filters as `/tasks`, `/api/export/report`). PDF = browser print (`PrintButton`, `print:hidden` on chrome). Arabic counts: `tasksCount` / `companiesCount` in `lib/labels.ts`.
 - **Reminders:** `lib/reminders.ts`. `syncNotifications` is idempotent; call it after any task change. `runDaily` runs once per org per day (layout + `/api/cron/reminders`).
 - **Mandatory fields:** put `required` on the control inside `<Field>` (the red * appears automatically). `ActionForm` validates before submit with Arabic messages; use its `oneOf` prop for "at least one of" groups and mark those fields `required="group"`. Always repeat the same rules in the server action. Company: name, contact person, phone or email (also enforced in the Excel import).
 - UI strings are Arabic; status/priority labels live in `lib/labels.ts`. Use Tailwind; shared classes in `components/ui.tsx`. Use `ms-`/`me-` (logical) spacing where direction matters.
@@ -24,5 +26,5 @@ Task & deadline tracker for an accounting office. Arabic-only UI, RTL (`<html la
 - Manual test: `npm run dev`, first-run setup at `/setup`, emails print to the terminal when `SMTP_HOST` is empty.
 
 ## Roadmap (from the agreed requirements)
-- Phase 2 (done: assignees, recurring tasks, checklists, comments, activity history). Remaining: bulk add + task templates, calendar view, per-company reports, Excel/PDF export.
+- Phase 2: done (assignees, recurring tasks, checklists, comments, history, templates + bulk add, calendar, reports, Excel/PDF export).
 - Phase 3: roles Admin / Assignee / Follower, workload view, review workflow (Assignee → Ready for review → Follower approves to Done or returns to In progress with a comment), Kanban, saved filters.

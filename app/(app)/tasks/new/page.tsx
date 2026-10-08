@@ -18,7 +18,21 @@ export default async function NewTaskPage({
 
   return (
     <>
-      <PageHeader title="مهمة جديدة" />
+      <PageHeader
+        title="مهمة جديدة"
+        subtitle={
+          <>
+            أو{' '}
+            <Link href={sp.company ? `/tasks/bulk?company=${sp.company}` : '/tasks/bulk'} className="text-brand-700 underline">
+              أضف عدة مهام مرة واحدة
+            </Link>{' '}
+            أو{' '}
+            <Link href="/templates" className="text-brand-700 underline">
+              استخدم قالبًا
+            </Link>
+          </>
+        }
+      />
       {sp.added && (
         <div className="mb-4">
           <Alert kind="success">تمت إضافة المهمة. يمكنك إضافة مهمة أخرى لنفس الشركة.</Alert>

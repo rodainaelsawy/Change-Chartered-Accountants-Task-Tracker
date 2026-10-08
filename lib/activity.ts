@@ -47,7 +47,7 @@ const list = (v: unknown) => (Array.isArray(v) ? v.join('، ') : '')
 export function describeActivity(action: string, d: Details): string {
   switch (action) {
     case 'created':
-      return 'أنشأ المهمة'
+      return d.template ? `أنشأ المهمة من قالب ${q(d.template)}` : 'أنشأ المهمة'
     case 'created_recurring':
       return `أنشأ المهمة تلقائيًا (مهمة متكررة) بموعد ${formatDate(String(d.deadline))}`
     case 'duplicated':

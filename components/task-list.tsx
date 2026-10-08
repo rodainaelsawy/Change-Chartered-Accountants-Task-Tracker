@@ -25,7 +25,7 @@ export function TaskList({
         const u = urgency(t.status, t.deadline, today)
         return (
           <li key={t.id} className={`flex items-center gap-3 px-4 py-3 hover:bg-slate-50 ${urgencyBorder[u]}`}>
-            <form action={setTaskStatus.bind(null, t.id, open ? 'done' : 'in_progress')}>
+            <form action={setTaskStatus.bind(null, t.id, open ? 'done' : 'in_progress')} className="print:hidden">
               <button
                 title={open ? 'تحديد كمنجزة' : 'إعادة فتح'}
                 aria-label={open ? 'تحديد كمنجزة' : 'إعادة فتح'}
@@ -69,7 +69,7 @@ export function TaskList({
               <div className="text-sm tabular-nums text-slate-700">{formatDate(t.deadline, 'short')}</div>
               <DueText status={t.status} deadline={t.deadline} today={today} />
             </div>
-            <div className="hidden w-24 shrink-0 text-left sm:block">
+            <div className="hidden w-24 shrink-0 text-left sm:block print:block">
               <StatusBadge status={t.status} />
             </div>
           </li>

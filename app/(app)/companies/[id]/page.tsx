@@ -8,6 +8,7 @@ import { Tabs } from '@/components/tabs'
 import { TaskList } from '@/components/task-list'
 import { Alert, Card, PageHeader, btn } from '@/components/ui'
 import { ATTACHMENT_KINDS, ATTACHMENT_LABEL } from '@/lib/attachments'
+import { tasksCount } from '@/lib/labels'
 import { requireSession } from '@/lib/auth'
 import { one, query } from '@/lib/db'
 import { formatDateTime, todayIn } from '@/lib/dates'
@@ -35,11 +36,11 @@ export default async function CompanyPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ closed?: string; tab?: string }>
+  searchParams: Promise<{ closed?: string; tab?: string; added?: string }>
 }) {
   const { org } = await requireSession()
   const { id } = await params
-  const { closed, tab } = await searchParams
+  const { closed, tab, added } = await searchParams
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
   const company = await one<Company>('select * from companies where id = $1 and org_id = $2', [id, org.id])
   if (!company) notFound()
@@ -119,6 +120,9 @@ export default async function CompanyPage({
             <Link href={`/tasks/new?company=${company.id}`} className={btn.primary}>
               + مهمة لهذه الشركة
             </Link>
+            <Link href={`/tasks/bulk?company=${company.id}`} className={btn.secondary}>
+              إضافة عدة مهام
+            </Link>
             <Link href={`/companies/${company.id}/edit`} className={btn.secondary}>
               تعديل
             </Link>
@@ -126,6 +130,11 @@ export default async function CompanyPage({
         }
       />
 
+      {added && (
+        <div className="mb-4">
+          <Alert kind="success">تمت إضافة {tasksCount(Number(added) || 0)}.</Alert>
+        </div>
+      )}
       {company.archived_at && (
         <div className="mb-4">
           <Alert kind="info">هذه الشركة مؤرشفة ولا تظهر في القوائم.</Alert>

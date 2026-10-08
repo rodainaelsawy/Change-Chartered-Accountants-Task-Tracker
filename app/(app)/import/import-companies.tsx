@@ -5,6 +5,7 @@ import Papa from 'papaparse'
 import { useState, useTransition } from 'react'
 import { importCompanies, type ImportRow } from '@/app/actions/companies'
 import { Alert, btn } from '@/components/ui'
+import { companiesCount } from '@/lib/labels'
 
 type FieldKey = keyof ImportRow
 
@@ -124,7 +125,7 @@ export function ImportCompanies() {
       {error && <Alert>{error}</Alert>}
       {result && (
         <Alert kind="success">
-          تم استيراد {result.added} شركة{result.skipped > 0 && ` · تم تخطي ${result.skipped} (مكرر أو بيانات إلزامية ناقصة)`}.{' '}
+          تم استيراد {companiesCount(result.added)}{result.skipped > 0 && ` · تم تخطي ${result.skipped} (مكرر أو بيانات إلزامية ناقصة)`}.{' '}
           <Link href="/companies" className="underline">
             عرض الشركات
           </Link>
@@ -216,7 +217,7 @@ export function ImportCompanies() {
               })
             }
           >
-            {pending ? 'جارٍ الاستيراد…' : `استيراد ${valid.length} شركة`}
+            {pending ? 'جارٍ الاستيراد…' : `استيراد ${companiesCount(valid.length)}`}
           </button>
         </>
       )}

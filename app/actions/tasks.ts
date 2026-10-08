@@ -8,6 +8,7 @@ import { one, query, tx } from '@/lib/db'
 import { PRIORITIES, STATUSES, isOpen } from '@/lib/labels'
 import { ensureNextOccurrences } from '@/lib/recurrence'
 import { clearTaskNotifications, notifyAssigned, syncNotifications } from '@/lib/reminders'
+import { insertTask, splitLines } from '@/lib/tasks'
 import type { RecurrenceFreq, TaskPriority, TaskStatus } from '@/lib/types'
 import type { FormState } from './auth'
 
@@ -49,11 +50,7 @@ export async function saveTask(_: FormState, fd: FormData): Promise<FormState> {
   const reminderDays = rd === '' ? null : Number(rd)
   const assigneeIds = [...new Set(fd.getAll('assignees').map(String).filter((v) => UUID.test(v)))]
   const recurrence = str(fd, 'recurrence') as RecurrenceFreq | ''
-  const checklist = str(fd, 'checklist')
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .slice(0, 100)
+  const checklist = splitLines(str(fd, 'checklist'))
 
   if (!title) return { error: 'عنوان المهمة مطلوب' }
   if (!companyId) return { error: 'اختر الشركة' }
@@ -146,30 +143,20 @@ export async function saveTask(_: FormState, fd: FormData): Promise<FormState> {
       ])
   } else {
     newlyAssigned = assigneeIds
-    taskId = await tx(async (c) => {
-      let seriesId: string | null = null
-      if (recurrence) {
-        const s = await c.query(
-          'insert into task_series (org_id, frequency, anchor_date, created_by) values ($1,$2,$3,$4) returning id',
-          [org.id, recurrence, deadline, user.id],
-        )
-        seriesId = s.rows[0].id
-      }
-      const r = await c.query(
-        `insert into tasks (org_id, company_id, title, deadline, priority, status, description, reminder_days,
-                            created_by, updated_by, series_id, occurrence_no)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9,$10,$11) returning id`,
-        [org.id, companyId, title, deadline, priority, status, description, reminderDays, user.id, seriesId, seriesId ? 0 : null],
-      )
-      const newId = r.rows[0].id as string
-      await c.query('insert into task_assignees (task_id, user_id) select $1, unnest($2::uuid[])', [newId, assigneeIds])
-      for (const [i, item] of checklist.entries())
-        await c.query('insert into task_checklist_items (task_id, title, position) values ($1,$2,$3)', [newId, item, i])
-      await logActivity({ orgId: org.id, taskId: newId, userId: user.id, action: 'created' }, c)
-      if (recurrence)
-        await logActivity({ orgId: org.id, taskId: newId, userId: user.id, action: 'recurrence_start', details: { frequency: recurrence } }, c)
-      return newId
-    })
+    taskId = await tx((c) =>
+      insertTask(c, { orgId: org.id, userId: user.id }, {
+        companyId,
+        title,
+        deadline,
+        priority,
+        status,
+        description,
+        reminderDays,
+        assigneeIds,
+        checklist,
+        recurrence: recurrence || null,
+      }),
+    )
   }
 
   await notifyAssigned(org, taskId, newlyAssigned, user.id)

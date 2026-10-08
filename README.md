@@ -26,22 +26,20 @@ See the requirements document for Phase 2 (recurring tasks, subtasks, templates,
 
 Requirements: **Node.js 20+** and **PostgreSQL 13+**.
 
-```bash
+```bat
 git clone https://github.com/rodainaelsawy/Change-Chartered-Accountants-Task-Tracker.git
 cd Change-Chartered-Accountants-Task-Tracker
 npm install
 
-# 1. Create an empty database (or use pgAdmin → Create → Database "task_tracker")
-createdb -U postgres task_tracker
+:: 1. Create the settings file (macOS/Linux: cp .env.example .env)
+copy .env.example .env
+notepad .env
+::    put your Postgres password in DATABASE_URL, save, close
 
-# 2. Configure
-cp .env.example .env          # Windows: copy .env.example .env
-#    then edit DATABASE_URL in .env with your Postgres user/password
-
-# 3. Create the tables
+:: 2. Create the database and tables (the database is created automatically if missing)
 npm run db:migrate
 
-# 4. Start
+:: 3. Start
 npm run dev
 ```
 

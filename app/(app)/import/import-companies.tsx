@@ -88,14 +88,18 @@ export function ImportCompanies() {
         return o
       })
     : []
-  const valid = mapped.filter((r) => r.name)
+  // Same mandatory rules as the company form: name, contact person, and phone or email.
+  const problem = (r: ImportRow): string | null =>
+    !r.name ? 'بدون اسم شركة' : !r.contact_person ? 'بدون شخص مسؤول' : !r.phone && !r.email ? 'بدون هاتف أو بريد' : null
+  const valid = mapped.filter((r) => !problem(r))
+  const invalid = mapped.map((r, i) => ({ r, i, why: problem(r) })).filter((x) => x.why)
 
   return (
     <div className="space-y-5">
       <div className="space-y-2 text-sm text-slate-600">
         <p>الصف الأول في الملف يجب أن يحتوي على عناوين الأعمدة. سيتم التعرف على الأعمدة تلقائيًا ويمكنك تعديلها قبل الاستيراد.</p>
         <p>
-          الشركات الموجودة بنفس الاسم يتم تخطيها. كلمات المرور تُحفظ مشفّرة. المرفقات تُضاف من صفحة كل شركة.{' '}
+          الحقول الإلزامية: اسم الشركة، الشخص المسؤول، والهاتف أو البريد الإلكتروني. الصفوف الناقصة لن تُستورد. الشركات الموجودة بنفس الاسم يتم تخطيها. كلمات المرور تُحفظ مشفّرة. المرفقات تُضاف من صفحة كل شركة.{' '}
           <a
             href={`data:text/csv;charset=utf-8,${encodeURIComponent(TEMPLATE)}`}
             download="companies-template.csv"
@@ -120,7 +124,7 @@ export function ImportCompanies() {
       {error && <Alert>{error}</Alert>}
       {result && (
         <Alert kind="success">
-          تم استيراد {result.added} شركة{result.skipped > 0 && ` · تم تخطي ${result.skipped} (مكرر أو بدون اسم)`}.{' '}
+          تم استيراد {result.added} شركة{result.skipped > 0 && ` · تم تخطي ${result.skipped} (مكرر أو بيانات إلزامية ناقصة)`}.{' '}
           <Link href="/companies" className="underline">
             عرض الشركات
           </Link>
@@ -136,7 +140,8 @@ export function ImportCompanies() {
                 <label key={f.key} className="text-sm">
                   <span className="mb-1 block text-slate-600">
                     {f.label}
-                    {f.key === 'name' && ' *'}
+                    {(f.key === 'name' || f.key === 'contact_person') && <span className="ms-0.5 text-red-600">*</span>}
+                    {(f.key === 'phone' || f.key === 'email') && <span className="ms-0.5 text-red-600">*¹</span>}
                   </span>
                   <select
                     value={map[f.key]}
@@ -157,7 +162,7 @@ export function ImportCompanies() {
 
           <div>
             <h3 className="mb-2 font-semibold">
-              معاينة ({valid.length} صف{rows.length !== valid.length && ` · ${rows.length - valid.length} بدون اسم`})
+              معاينة ({valid.length} صف جاهز للاستيراد)
             </h3>
             <div className="overflow-x-auto rounded-lg border border-slate-200">
               <table className="w-full text-sm">
@@ -185,6 +190,20 @@ export function ImportCompanies() {
             </div>
             {valid.length > 10 && <p className="mt-1 text-xs text-slate-500">يتم عرض أول 10 صفوف فقط.</p>}
           </div>
+
+          {invalid.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <p className="font-medium">{invalid.length} صف لن يُستورد لنقص بيانات إلزامية. صحّحها في الملف ثم أعد رفعه:</p>
+              <ul className="mt-2 space-y-0.5">
+                {invalid.slice(0, 15).map((x) => (
+                  <li key={x.i}>
+                    صف {x.i + 2}: {x.r.name || '—'} <span className="text-amber-700">({x.why})</span>
+                  </li>
+                ))}
+              </ul>
+              {invalid.length > 15 && <p className="mt-1 text-xs">… و{invalid.length - 15} صفوف أخرى</p>}
+            </div>
+          )}
 
           <button
             className={btn.primary}

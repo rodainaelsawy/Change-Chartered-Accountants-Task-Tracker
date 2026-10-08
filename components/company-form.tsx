@@ -6,7 +6,12 @@ import { Field, inputCls } from './ui'
 export function CompanyForm({ company, focusTax = false }: { company?: Company; focusTax?: boolean }) {
   const hasPassword = Boolean(company?.tax_password_enc)
   return (
-    <ActionForm action={saveCompany} submitLabel={company ? 'حفظ التعديلات' : 'إضافة الشركة'} className="space-y-6">
+    <ActionForm
+      action={saveCompany}
+      submitLabel={company ? 'حفظ التعديلات' : 'إضافة الشركة'}
+      className="space-y-6"
+      oneOf={[{ fields: ['phone', 'email'], message: 'أدخل رقم الهاتف أو البريد الإلكتروني (واحد على الأقل)' }]}
+    >
       {company && <input type="hidden" name="id" value={company.id} />}
       {focusTax && <input type="hidden" name="tab" value="tax" />}
 
@@ -19,12 +24,12 @@ export function CompanyForm({ company, focusTax = false }: { company?: Company; 
           <input name="activity" defaultValue={company?.activity ?? ''} className={inputCls} />
         </Field>
         <Field label="الشخص المسؤول">
-          <input name="contact_person" defaultValue={company?.contact_person ?? ''} className={inputCls} />
+          <input name="contact_person" required defaultValue={company?.contact_person ?? ''} className={inputCls} />
         </Field>
-        <Field label="الهاتف">
+        <Field label="الهاتف" required="group">
           <input name="phone" type="tel" defaultValue={company?.phone ?? ''} className={`${inputCls} ltr text-right`} />
         </Field>
-        <Field label="البريد الإلكتروني" className="sm:col-span-2">
+        <Field label="البريد الإلكتروني" required="group" className="sm:col-span-2">
           <input name="email" type="email" defaultValue={company?.email ?? ''} className={`${inputCls} ltr text-right`} />
         </Field>
         <Field label="ملاحظات" className="sm:col-span-2">

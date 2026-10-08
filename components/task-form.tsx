@@ -53,7 +53,7 @@ export function TaskForm({
         <input name="deadline" type="date" required defaultValue={task?.deadline ?? defaultDeadline} className={inputCls} />
       </Field>
       <Field label="الأولوية">
-        <select name="priority" defaultValue={task?.priority ?? 'medium'} className={inputCls}>
+        <select name="priority" required defaultValue={task?.priority ?? 'medium'} className={inputCls}>
           {PRIORITIES.map((p) => (
             <option key={p} value={p}>
               {PRIORITY_LABEL[p]}
@@ -62,7 +62,7 @@ export function TaskForm({
         </select>
       </Field>
       <Field label="الحالة">
-        <select name="status" defaultValue={task?.status ?? 'not_started'} className={inputCls}>
+        <select name="status" required defaultValue={task?.status ?? 'not_started'} className={inputCls}>
           {STATUSES.map((s) => (
             <option key={s} value={s}>
               {STATUS_LABEL[s]}

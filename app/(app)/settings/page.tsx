@@ -1,5 +1,5 @@
 import { changePassword, inviteUser, setUserActive, setUserRole, updateOrg, updateProfile } from '@/app/actions/settings'
-import { ActionForm } from '@/components/action-form'
+import { ActionForm, ConfirmButton } from '@/components/action-form'
 import { Card, Field, PageHeader, btn, inputCls } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
 import { query } from '@/lib/db'
@@ -23,7 +23,7 @@ export default async function SettingsPage() {
   return (
     <>
       <PageHeader title="الإعدادات" />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-4">
         <Card className="p-5">
           <h2 className="mb-4 font-semibold">بياناتي</h2>
           <ActionForm action={updateProfile} submitLabel="حفظ">
@@ -126,14 +126,24 @@ export default async function SettingsPage() {
                       {m.id !== user.id && (
                         <div className="flex flex-wrap justify-end gap-1">
                           {m.pending && m.active && <InviteLinkButton userId={m.id} />}
-                          <form action={setUserRole.bind(null, m.id, m.role === 'admin' ? 'member' : 'admin')}>
-                            <button className={btn.ghost}>{m.role === 'admin' ? 'جعله عضوًا' : 'جعله مديرًا'}</button>
-                          </form>
-                          <form action={setUserActive.bind(null, m.id, !m.active)}>
-                            <button className={`${btn.ghost} ${m.active ? 'text-red-700' : ''}`}>
-                              {m.active ? 'إيقاف' : 'تفعيل'}
-                            </button>
-                          </form>
+                          <ConfirmButton
+                            action={setUserRole.bind(null, m.id, m.role === 'admin' ? 'member' : 'admin')}
+                            confirmText={m.role === 'admin' ? `سحب صلاحية المدير من ${m.full_name}؟` : `منح ${m.full_name} صلاحية المدير (إدارة الفريق والإعدادات)؟`}
+                            className={btn.ghost}
+                          >
+                            {m.role === 'admin' ? 'جعله عضوًا' : 'جعله مديرًا'}
+                          </ConfirmButton>
+                          <ConfirmButton
+                            action={setUserActive.bind(null, m.id, !m.active)}
+                            confirmText={
+                              m.active
+                                ? `إيقاف حساب ${m.full_name}؟ لن يتمكن من الدخول، وتبقى مهامه وسجله كما هي. يمكن تفعيله لاحقًا.`
+                                : undefined
+                            }
+                            className={`${btn.ghost} ${m.active ? 'text-red-700' : ''}`}
+                          >
+                            {m.active ? 'إيقاف' : 'تفعيل'}
+                          </ConfirmButton>
                         </div>
                       )}
                     </td>

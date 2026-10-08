@@ -2,6 +2,7 @@ import { saveTask } from '@/app/actions/tasks'
 import { FREQ_LABEL, PRIORITIES, PRIORITY_LABEL, STATUSES, STATUS_LABEL } from '@/lib/labels'
 import type { Task } from '@/lib/types'
 import { ActionForm } from './action-form'
+import { CompanyCombobox, DeadlineInput } from './form-inputs'
 import { ASSIGNEES_CHECK, AssigneePicker, type TeamMember } from './assignee-picker'
 import { Field, btn, inputCls } from './ui'
 
@@ -15,6 +16,8 @@ export function TaskForm({
   defaultDeadline,
   orgReminderDays,
   next,
+  today,
+  cancelHref,
 }: {
   task?: Task
   companies: { id: string; name: string }[]
@@ -25,6 +28,8 @@ export function TaskForm({
   defaultDeadline: string
   orgReminderDays: number
   next?: string
+  today: string
+  cancelHref?: string
 }) {
   const recurring = Boolean(task?.series_id)
   return (
@@ -33,6 +38,7 @@ export function TaskForm({
       submitLabel={task ? 'حفظ التعديلات' : 'إضافة المهمة'}
       className="grid gap-4 sm:grid-cols-2"
       checkGroups={ASSIGNEES_CHECK}
+      cancelHref={cancelHref}
       footer={
         !task && (
           <button type="submit" name="again" value="1" className={btn.secondary}>
@@ -47,19 +53,10 @@ export function TaskForm({
         <input name="title" required defaultValue={task?.title} className={inputCls} autoFocus={!task} />
       </Field>
       <Field label="الشركة">
-        <select name="company_id" required defaultValue={task?.company_id ?? defaultCompanyId ?? ''} className={inputCls}>
-          <option value="" disabled>
-            اختر الشركة…
-          </option>
-          {companies.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+        <CompanyCombobox name="company_id" required companies={companies} defaultValue={task?.company_id ?? defaultCompanyId} />
       </Field>
       <Field label={recurring ? 'موعد التسليم (لهذه المرة)' : 'موعد التسليم'}>
-        <input name="deadline" type="date" required defaultValue={task?.deadline ?? defaultDeadline} className={inputCls} />
+        <DeadlineInput name="deadline" required defaultValue={task?.deadline ?? defaultDeadline} today={today} />
       </Field>
 
       <AssigneePicker team={team} selected={assigneeIds} className="sm:col-span-2" />

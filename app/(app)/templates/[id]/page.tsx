@@ -6,7 +6,7 @@ import { ASSIGNEES_CHECK, AssigneePicker } from '@/components/assignee-picker'
 import { CompanyPicker } from '@/components/company-picker'
 import type { TemplateItem } from '@/components/rows-editor'
 import { TemplateForm } from '@/components/template-form'
-import { Alert, Card, Field, PageHeader, btn, inputCls } from '@/components/ui'
+import { Crumbs, Card, Field, PageHeader, btn, inputCls } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
 import { one, query } from '@/lib/db'
 import { todayIn } from '@/lib/dates'
@@ -21,7 +21,7 @@ export default async function TemplatePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ saved?: string; edit?: string }>
+  searchParams: Promise<{ edit?: string }>
 }) {
   const { org, user } = await requireSession()
   const { id } = await params
@@ -43,17 +43,8 @@ export default async function TemplatePage({
 
   return (
     <>
-      <div className="mb-2 text-sm">
-        <Link href="/templates" className="text-brand-700 hover:underline">
-          قوالب المهام
-        </Link>
-      </div>
+      <Crumbs items={[{ href: '/templates', label: 'قوالب المهام' }]} />
       <PageHeader title={template.name} subtitle={template.description ?? tasksCount(items.length)} />
-      {sp.saved && (
-        <div className="mb-4">
-          <Alert kind="success">تم حفظ القالب.</Alert>
-        </div>
-      )}
 
       <div className="grid gap-6 lg:grid-cols-5">
         <Card className="p-5 lg:col-span-3">

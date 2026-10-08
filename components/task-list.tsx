@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { setTaskStatus } from '@/app/actions/tasks'
+import { TaskDoneToggle } from './task-done-toggle'
 import { formatDate } from '@/lib/dates'
 import { isOpen } from '@/lib/labels'
 import type { Task } from '@/lib/types'
@@ -25,19 +25,7 @@ export function TaskList({
         const u = urgency(t.status, t.deadline, today)
         return (
           <li key={t.id} className={`flex items-center gap-3 px-4 py-3 hover:bg-slate-50 ${urgencyBorder[u]}`}>
-            <form action={setTaskStatus.bind(null, t.id, open ? 'done' : 'in_progress')} className="print:hidden">
-              <button
-                title={open ? 'تحديد كمنجزة' : 'إعادة فتح'}
-                aria-label={open ? 'تحديد كمنجزة' : 'إعادة فتح'}
-                className={`flex h-6 w-6 items-center justify-center rounded-full border-2 text-xs ${
-                  t.status === 'done'
-                    ? 'border-emerald-500 bg-emerald-500 text-white'
-                    : 'border-slate-300 text-transparent hover:border-emerald-500 hover:text-emerald-500'
-                }`}
-              >
-                ✓
-              </button>
-            </form>
+            <TaskDoneToggle id={t.id} title={t.title} status={t.status} />
             <div className="min-w-0 flex-1">
               <Link
                 href={`/tasks/${t.id}`}

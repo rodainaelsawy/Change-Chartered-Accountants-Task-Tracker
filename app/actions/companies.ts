@@ -64,7 +64,7 @@ export async function saveCompany(_: FormState, fd: FormData): Promise<FormState
     companyId = r.id
   }
   revalidatePath('/companies')
-  redirect(`/companies/${companyId}${fd.get('tab') === 'tax' ? '?tab=tax' : ''}`)
+  redirect(`/companies/${companyId}?msg=${id ? 'company_saved' : 'company_created'}${fd.get('tab') === 'tax' ? '&tab=tax' : ''}`)
 }
 
 /** Returns the decrypted tax-portal password (only when the user clicks "show" or "copy"). */
@@ -90,7 +90,7 @@ export async function deleteCompany(id: string) {
   await deleteCompanyFiles(id)
   await query('delete from companies where id = $1 and org_id = $2', [id, org.id])
   revalidatePath('/', 'layout')
-  redirect('/companies')
+  redirect('/companies?msg=company_deleted')
 }
 
 // ---------- Attachments ----------

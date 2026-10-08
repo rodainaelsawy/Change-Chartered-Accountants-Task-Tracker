@@ -3,7 +3,8 @@ import { TaskList } from '@/components/task-list'
 import { Card, PageHeader, StatCard, btn } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
 import { one, query } from '@/lib/db'
-import { addDays, formatDate, formatWeekday, startOfWeek, todayIn } from '@/lib/dates'
+import { addDays, formatDate, formatDateTime, formatWeekday, startOfWeek, todayIn } from '@/lib/dates'
+import { describeActivity } from '@/lib/activity'
 import { TASK_SELECT, assignedTo } from '@/lib/queries'
 import type { Task } from '@/lib/types'
 
@@ -39,6 +40,24 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     ),
     one<{ n: number }>('select count(*)::int as n from companies where org_id = $1 and archived_at is null', [org.id]),
   ])
+  const recent = await query<{
+    id: string
+    action: string
+    details: Record<string, unknown>
+    user_id: string | null
+    who: string | null
+    created_at: Date
+    task_id: string
+    title: string
+    company_name: string
+  }>(
+    `select a.id, a.action, a.details, a.user_id, u.full_name as who, a.created_at, t.id as task_id, t.title, c.name as company_name
+       from task_activity a join tasks t on t.id = a.task_id join companies c on c.id = t.company_id
+       left join users u on u.id = a.user_id
+      where a.org_id = $1 ${mine ? `and ${assignedTo('$2')}` : 'and $2::uuid is not null'}
+      order by a.created_at desc, a.id desc limit 12`,
+    [org.id, user.id],
+  )
   const s = stats!
   const q = mine ? '&assignee=me' : ''
 
@@ -85,7 +104,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         <StatCard label="أُنجزت هذا الأسبوع" value={s.done_week} href={`/tasks?status=done&sort=created${q}`} tone="emerald" />
       </div>
 
-      <Card className="mt-6 overflow-hidden">
+      <div className="mt-6 grid gap-6 xl:grid-cols-3">
+      <Card className="overflow-hidden xl:col-span-2">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <h2 className="font-semibold">تحتاج إلى متابعة</h2>
           <Link href={mine ? '/tasks?assignee=me' : '/tasks'} className="text-sm text-brand-700 hover:underline">
@@ -94,6 +114,31 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         </div>
         <TaskList tasks={attention} today={today} empty="لا توجد مهام متأخرة أو مستحقة خلال الأيام السبعة القادمة 🎉" />
       </Card>
+
+      {/* Recent activity across the office (H1: keep users informed about what is going on) */}
+      <Card className="h-fit overflow-hidden">
+        <h2 className="border-b border-slate-200 px-4 py-3 font-semibold">آخر النشاطات</h2>
+        {recent.length === 0 ? (
+          <p className="px-4 py-6 text-center text-sm text-slate-500">لا يوجد نشاط بعد</p>
+        ) : (
+          <ul className="divide-y divide-slate-100 text-sm">
+            {recent.map((a) => (
+              <li key={a.id} className="px-4 py-2.5">
+                <p className="text-slate-700">
+                  <span className="font-medium">{a.user_id ? (a.who ?? 'مستخدم محذوف') : 'النظام'}</span> {describeActivity(a.action, a.details)}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  <Link href={`/tasks/${a.task_id}`} className="text-brand-700 hover:underline">
+                    {a.title}
+                  </Link>{' '}
+                  · {a.company_name} · {formatDateTime(a.created_at, org.timezone)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+      </div>
     </>
   )
 }

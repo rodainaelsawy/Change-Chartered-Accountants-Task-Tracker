@@ -1,16 +1,17 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { deleteTask, duplicateTask, setTaskStatus, stopRecurrence } from '@/app/actions/tasks'
+import { deleteTask, duplicateTask, setStatusAction, stopRecurrence } from '@/app/actions/tasks'
 import { ConfirmButton } from '@/components/action-form'
 import { TaskChecklist, type ChecklistItem } from '@/components/task-checklist'
 import { TaskComments } from '@/components/task-comments'
 import { TaskForm } from '@/components/task-form'
-import { Alert, Card, DueText, PageHeader, StatusBadge, btn } from '@/components/ui'
+import { SubmitButton } from '@/components/submit-button'
+import { Card, Crumbs, DueText, PageHeader, PriorityText, StatusBadge, btn } from '@/components/ui'
 import { describeActivity } from '@/lib/activity'
 import { requireSession } from '@/lib/auth'
 import { one, query } from '@/lib/db'
 import { formatDate, formatDateTime, todayIn } from '@/lib/dates'
-import { FREQ_LABEL, isOpen } from '@/lib/labels'
+import { FREQ_LABEL, daysCount, isOpen } from '@/lib/labels'
 import { companyOptions, teamMembers } from '@/lib/queries'
 import type { RecurrenceFreq, Task } from '@/lib/types'
 
@@ -21,11 +22,11 @@ export default async function TaskPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ copied?: string }>
+  searchParams: Promise<{ edit?: string }>
 }) {
   const { org, user } = await requireSession()
   const { id } = await params
-  const { copied } = await searchParams
+  const { edit } = await searchParams
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
 
   const task = await one<Task>(
@@ -73,11 +74,7 @@ export default async function TaskPage({
 
   return (
     <>
-      <div className="mb-2 text-sm">
-        <Link href={`/companies/${task.company_id}`} className="text-brand-700 hover:underline">
-          {task.company_name}
-        </Link>
-      </div>
+      <Crumbs items={[{ href: '/tasks', label: 'المهام' }, { href: `/companies/${task.company_id}`, label: task.company_name }]} />
       <PageHeader
         title={task.title}
         subtitle={
@@ -90,32 +87,36 @@ export default async function TaskPage({
         }
         actions={
           <>
-            {open ? (
-              <form action={setTaskStatus.bind(null, task.id, 'done')}>
-                <button className={btn.primary}>✓ تحديد كمنجزة</button>
-              </form>
-            ) : (
-              <form action={setTaskStatus.bind(null, task.id, 'in_progress')}>
-                <button className={btn.secondary}>إعادة فتح المهمة</button>
+            {task.status === 'not_started' && (
+              <form action={setStatusAction.bind(null, task.id, 'in_progress')}>
+                <SubmitButton className={btn.secondary}>بدء التنفيذ</SubmitButton>
               </form>
             )}
-            {task.status === 'not_started' && (
-              <form action={setTaskStatus.bind(null, task.id, 'in_progress')}>
-                <button className={btn.secondary}>بدء التنفيذ</button>
+            <a href="?edit=1#edit" className={btn.secondary}>
+              تعديل
+            </a>
+            {open ? (
+              <form action={setStatusAction.bind(null, task.id, 'done')}>
+                <SubmitButton className={btn.primary}>✓ تحديد كمنجزة</SubmitButton>
+              </form>
+            ) : (
+              <form action={setStatusAction.bind(null, task.id, 'in_progress')}>
+                <SubmitButton className={btn.secondary}>إعادة فتح المهمة</SubmitButton>
               </form>
             )}
           </>
         }
       />
 
-      {copied && (
-        <div className="mb-4">
-          <Alert kind="success">تم إنشاء نسخة من المهمة. عدّل العنوان والموعد ثم احفظ.</Alert>
-        </div>
-      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          {task.description && (
+            <Card className="p-5">
+              <h2 className="mb-2 font-semibold">الوصف</h2>
+              <p className="whitespace-pre-wrap text-slate-700">{task.description}</p>
+            </Card>
+          )}
           <Card className="p-5">
             <h2 className="mb-3 font-semibold">خطوات المهمة</h2>
             <TaskChecklist taskId={task.id} items={checklist} />
@@ -137,8 +138,14 @@ export default async function TaskPage({
             />
           </Card>
 
-          <Card className="p-5">
-            <h2 className="mb-4 font-semibold">تعديل المهمة</h2>
+          <Card className="scroll-mt-24 p-0" id="edit">
+            <details open={Boolean(edit)} className="group">
+              <summary className="flex cursor-pointer list-none items-center justify-between p-5 font-semibold">
+                تعديل بيانات المهمة
+                <span className="text-sm font-normal text-brand-700 group-open:hidden">فتح ▾</span>
+                <span className="hidden text-sm font-normal text-slate-500 group-open:inline">إغلاق ▴</span>
+              </summary>
+              <div className="border-t border-slate-100 p-5">
             <TaskForm
               task={task}
               companies={companies}
@@ -146,7 +153,11 @@ export default async function TaskPage({
               assigneeIds={assignees.map((a) => a.id)}
               defaultDeadline={task.deadline}
               orgReminderDays={org.reminder_days}
+              today={today}
+              cancelHref={`/tasks/${task.id}`}
             />
+              </div>
+            </details>
           </Card>
         </div>
 
@@ -154,6 +165,18 @@ export default async function TaskPage({
           <Card className="p-5 text-sm">
             <h2 className="mb-3 font-semibold">التفاصيل</h2>
             <dl className="space-y-3 text-slate-600">
+              <div className="flex gap-6">
+                <div>
+                  <dt className="text-xs text-slate-400">الأولوية</dt>
+                  <dd>
+                    <PriorityText priority={task.priority} />
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-slate-400">التذكير</dt>
+                  <dd>{(task.reminder_days ?? org.reminder_days) === 0 ? 'يوم الموعد فقط' : `${daysCount(task.reminder_days ?? org.reminder_days)} قبل الموعد`}</dd>
+                </div>
+              </div>
               <div>
                 <dt className="text-xs text-slate-400">المسؤولون</dt>
                 <dd className="mt-1 flex flex-wrap gap-1">
@@ -226,7 +249,7 @@ export default async function TaskPage({
 
           <Card className="space-y-2 p-5">
             <form action={duplicateTask.bind(null, task.id)}>
-              <button className={`${btn.secondary} w-full`}>نسخ المهمة</button>
+              <SubmitButton className={`${btn.secondary} w-full`}>نسخ المهمة</SubmitButton>
             </form>
             <ConfirmButton
               action={deleteTask.bind(null, task.id)}

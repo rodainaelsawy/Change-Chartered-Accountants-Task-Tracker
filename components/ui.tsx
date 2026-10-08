@@ -17,8 +17,12 @@ export const btn = {
   ghost: 'inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm text-slate-600 hover:bg-slate-100',
 }
 
-export function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-xl border border-slate-200 bg-white shadow-sm ${className}`}>{children}</div>
+export function Card({ children, className = '', id }: { children: React.ReactNode; className?: string; id?: string }) {
+  return (
+    <div id={id} className={`rounded-xl border border-slate-200 bg-white shadow-sm ${className}`}>
+      {children}
+    </div>
+  )
 }
 
 export function PageHeader({
@@ -154,5 +158,21 @@ export function StatCard({
       <div className="text-sm text-slate-500">{label}</div>
       <div className={`mt-2 inline-block rounded-lg px-3 py-1 text-3xl font-bold tabular-nums ${tones[tone]}`}>{value}</div>
     </Link>
+  )
+}
+
+/** Breadcrumb trail above a page title (H3: always a clear way back). */
+export function Crumbs({ items }: { items: { href: string; label: string }[] }) {
+  return (
+    <nav aria-label="مسار الصفحة" className="mb-2 flex flex-wrap items-center gap-1.5 text-sm print:hidden">
+      {items.map((it, i) => (
+        <span key={it.href} className="flex items-center gap-1.5">
+          {i > 0 && <span className="text-slate-300">‹</span>}
+          <Link href={it.href} className="text-brand-700 hover:underline">
+            {it.label}
+          </Link>
+        </span>
+      ))}
+    </nav>
   )
 }

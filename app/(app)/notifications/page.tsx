@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
+import { SubmitButton } from '@/components/submit-button'
 import { Card, Empty, PageHeader, btn } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
 import { query } from '@/lib/db'
@@ -62,7 +63,7 @@ export default async function NotificationsPage() {
         actions={
           unread > 0 && (
             <form action={markAllRead}>
-              <button className={btn.secondary}>تحديد الكل كمقروء</button>
+              <SubmitButton className={btn.secondary}>تحديد الكل كمقروء</SubmitButton>
             </form>
           )
         }
@@ -88,7 +89,9 @@ export default async function NotificationsPage() {
                 </div>
                 {!n.read_at && (
                   <form action={markRead.bind(null, n.id)}>
-                    <button className={btn.ghost}>تم</button>
+                    <SubmitButton className={btn.ghost} title="تحديد كمقروء">
+                      تم
+                    </SubmitButton>
                   </form>
                 )}
               </li>

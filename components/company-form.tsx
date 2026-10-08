@@ -3,13 +3,14 @@ import type { Company } from '@/lib/types'
 import { ActionForm } from './action-form'
 import { Field, inputCls } from './ui'
 
-export function CompanyForm({ company, focusTax = false }: { company?: Company; focusTax?: boolean }) {
+export function CompanyForm({ company, focusTax = false, cancelHref }: { company?: Company; focusTax?: boolean; cancelHref?: string }) {
   const hasPassword = Boolean(company?.tax_password_enc)
   return (
     <ActionForm
       action={saveCompany}
       submitLabel={company ? 'حفظ التعديلات' : 'إضافة الشركة'}
       className="space-y-6"
+      cancelHref={cancelHref}
       oneOf={[{ fields: ['phone', 'email'], message: 'أدخل رقم الهاتف أو البريد الإلكتروني (واحد على الأقل)' }]}
     >
       {company && <input type="hidden" name="id" value={company.id} />}

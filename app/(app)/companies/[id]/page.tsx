@@ -2,11 +2,12 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { deleteCompany, setCompanyArchived } from '@/app/actions/companies'
 import { ConfirmButton } from '@/components/action-form'
+import { SubmitButton } from '@/components/submit-button'
 import { AttachmentZone, type FileRow } from '@/components/attachment-zone'
 import { CopyValue, TaxPasswordField } from '@/components/secret-field'
 import { Tabs } from '@/components/tabs'
 import { TaskList } from '@/components/task-list'
-import { Alert, Card, PageHeader, btn } from '@/components/ui'
+import { Crumbs, Alert, Card, PageHeader, btn } from '@/components/ui'
 import { ATTACHMENT_KINDS, ATTACHMENT_LABEL } from '@/lib/attachments'
 import { tasksCount } from '@/lib/labels'
 import { requireSession } from '@/lib/auth'
@@ -107,11 +108,7 @@ export default async function CompanyPage({
 
   return (
     <>
-      <div className="mb-2 text-sm">
-        <Link href="/companies" className="text-brand-700 hover:underline">
-          الشركات
-        </Link>
-      </div>
+      <Crumbs items={[{ href: '/companies', label: 'الشركات' }]} />
       <PageHeader
         title={company.name}
         subtitle={`${open.length} مفتوحة · ${overdue} متأخرة · ${done.filter((t) => t.status === 'done').length} منجزة`}
@@ -191,7 +188,7 @@ export default async function CompanyPage({
           </Card>
           <Card className="space-y-2 p-5">
             <form action={setCompanyArchived.bind(null, company.id, !company.archived_at)}>
-              <button className={`${btn.secondary} w-full`}>{company.archived_at ? 'إلغاء الأرشفة' : 'أرشفة الشركة'}</button>
+              <SubmitButton className={`${btn.secondary} w-full`}>{company.archived_at ? 'إلغاء الأرشفة' : 'أرشفة الشركة'}</SubmitButton>
             </form>
             <ConfirmButton
               action={deleteCompany.bind(null, company.id)}

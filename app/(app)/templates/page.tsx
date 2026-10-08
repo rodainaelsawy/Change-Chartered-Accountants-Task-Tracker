@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Card, Empty, PageHeader, btn } from '@/components/ui'
+import { Crumbs, Card, Empty, PageHeader, btn } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
 import { query } from '@/lib/db'
 import { tasksCount } from '@/lib/labels'
@@ -17,11 +17,7 @@ export default async function TemplatesPage() {
   )
   return (
     <>
-      <div className="mb-2 text-sm">
-        <Link href="/tasks" className="text-brand-700 hover:underline">
-          المهام
-        </Link>
-      </div>
+      <Crumbs items={[{ href: '/tasks', label: 'المهام' }]} />
       <PageHeader
         title="قوالب المهام"
         subtitle="مجموعة مهام تُحفظ مرة واحدة وتُطبَّق على شركة أو عدة شركات بضغطة واحدة."

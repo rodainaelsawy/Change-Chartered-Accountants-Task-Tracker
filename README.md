@@ -1,18 +1,21 @@
 # Change Chartered Accountants — Task Tracker
 
-A web app that tracks client tasks and deadlines for the organization's team. Arabic interface (right-to-left).
+A web app that tracks the tasks and deadlines of the companies the office serves for the organization's team. Arabic interface (right-to-left).
 
 **Stack:** Next.js 16 (App Router, Server Actions) · PostgreSQL (plain SQL via `pg`) · Tailwind CSS 4 · Nodemailer.
 
 ## MVP features (v1)
 
 - **Team accounts:** first-run setup creates the organization and its admin. The admin adds team members, and each one gets an invitation link to set a password. Password reset by email. In v1 every member has the same access to tasks; the admin also manages the team and settings.
-- **Clients:** add, edit, archive, delete and search clients. Each client shows open, overdue and completed counts.
-- **Client import** from Excel (`.xlsx`) or CSV. Arabic and English column names are detected automatically, you can adjust the mapping, a preview is shown, and duplicate names are skipped.
-- **Tasks:** each task belongs to one client and has a title, a deadline (date only), a priority, a status, a description and an optional per-task reminder. You can add several tasks for the same client in a row, and duplicate or delete tasks.
+- **Companies (الشركات):** add, edit, archive, delete and search companies. Each company shows open, overdue and completed counts.
+  - **General data tab (البيانات العامة):** activity, contact person, phone, email, notes.
+  - **Tax data tab (البيانات الضريبية):** the tax-portal email, username and password. The password is stored **encrypted** (AES-256-GCM) and loaded only when someone clicks "show" or "copy".
+  - **Attachments (المرفقات), PDF only, max 10 MB each:** السجل التجاري (one file, a new upload replaces it), البطاقة الضريبية (one file, replaced the same way), and أخرى (any number of files). Files open only for signed-in users of the organization.
+- **Company import** from Excel (`.xlsx`) or CSV, including the tax data; attachments are added per company. Arabic and English column names are detected automatically, you can adjust the mapping, a preview is shown (passwords are masked), and duplicate names are skipped.
+- **Tasks:** each task belongs to one company and has a title, a deadline (date only), a priority, a status, a description and an optional per-task reminder. You can add several tasks for the same company in a row, and duplicate or delete tasks.
 - **Tracking:** statuses are not started, in progress, on hold, done and cancelled. One click marks a task done. A task past its deadline is flagged overdue automatically. Each task records who created and last edited it, and when it was completed.
 - **Dashboard:** counts of overdue tasks, tasks due today, tasks due in the next 7 days, and tasks completed this week, plus a "needs attention" list. Colour coding: red means overdue, amber means due within 2 days, green means done.
-- **Task list:** search, filter by client, status, deadline window or priority, and sort. Filters are kept in the URL, so a filtered view can be bookmarked.
+- **Task list:** search, filter by company, status, deadline window or priority, and sort. Filters are kept in the URL, so a filtered view can be bookmarked.
 - **Reminders:**
   - The default reminder fires **2 days before** the deadline. Admins can change the default, and any task can override it.
   - A reminder also fires on the deadline day.
@@ -55,6 +58,8 @@ Without SMTP settings, emails (invitations, password resets, the daily digest) a
 | `DATABASE_SSL` | `true` for hosted databases that require SSL |
 | `APP_URL` | Public URL of the app, used in email links |
 | `CRON_SECRET` | Secret for the reminders endpoint |
+| `ENCRYPTION_KEY` | Encrypts the tax-portal passwords. Generate once: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. **Never change it** once real data exists. Optional in development (an insecure dev key is used), required in production |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob store for PDF attachments. Set automatically on Vercel when you connect a **private** Blob store. Leave empty locally: files go to the `.uploads/` folder |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Outgoing email. For Gmail use `smtp.gmail.com`, port `587`, and an **App Password** |
 
 ## How reminders run
@@ -72,14 +77,14 @@ Add `&force=1` to send today's digest again (useful when testing email settings)
 
 ## Production
 
-The app is a standard Next.js server: `npm run build && npm start`. Point `DATABASE_URL` at a Postgres the server can reach, for example the client's server, Supabase, Neon or Railway. A laptop database is for development only. Run `npm run db:migrate` against the production database when deploying a new version.
+The app is a standard Next.js server: `npm run build && npm start`. Point `DATABASE_URL` at a Postgres the server can reach, for example your own server, Supabase, Neon or Railway. A laptop database is for development only. Run `npm run db:migrate` against the production database when deploying a new version.
 
 ## Project structure
 
 ```
 app/
   (auth)/           login, first-run setup, forgot/reset password (also used for invitations)
-  (app)/            signed-in pages: dashboard, tasks, clients, import, notifications, settings
+  (app)/            signed-in pages: dashboard, tasks, companies, import, notifications, settings
   actions/          server actions (every one checks the session and the organization)
   api/cron/         daily reminders endpoint
 components/         shared UI (task list, forms, badges)

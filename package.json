@@ -11,6 +11,7 @@
     "reminders": "node scripts/run-reminders.mjs"
   },
   "dependencies": {
+    "@vercel/blob": "^2.8.1",
     "bcryptjs": "^3.0.3",
     "next": "^16.4.0",
     "nodemailer": "^10.0.16",

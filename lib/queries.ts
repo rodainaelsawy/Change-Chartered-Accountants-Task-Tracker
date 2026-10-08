@@ -6,25 +6,25 @@ import type { Task } from './types'
 
 export type TaskFilters = {
   q?: string
-  client?: string
+  company?: string
   status?: string // 'open' (default) | 'all' | 'closed' | a TaskStatus
   priority?: string
   due?: string // 'overdue' | 'today' | 'week' | 'later' | ''
-  sort?: string // 'deadline' | 'client' | 'priority' | 'status' | 'created'
+  sort?: string // 'deadline' | 'company' | 'priority' | 'status' | 'created'
 }
 
 const SORTS: Record<string, string> = {
   deadline: 't.deadline asc, t.priority desc',
-  client: 'c.name asc, t.deadline asc',
+  company: 'c.name asc, t.deadline asc',
   priority: 't.priority desc, t.deadline asc',
   status: 't.status asc, t.deadline asc',
   created: 't.created_at desc',
 }
 
 export const TASK_SELECT = `
-  select t.id, t.client_id, c.name as client_name, t.title, t.description, t.deadline, t.priority, t.status,
+  select t.id, t.company_id, c.name as company_name, t.title, t.description, t.deadline, t.priority, t.status,
          t.reminder_days, t.created_at, t.updated_at, t.completed_at
-    from tasks t join clients c on c.id = t.client_id`
+    from tasks t join companies c on c.id = t.company_id`
 
 export async function listTasks(orgId: string, f: TaskFilters, today: string, limit = 500): Promise<Task[]> {
   const where: string[] = ['t.org_id = $1']
@@ -39,7 +39,7 @@ export async function listTasks(orgId: string, f: TaskFilters, today: string, li
   else if (status === 'closed') where.push(`t.status in ('done','cancelled')`)
   else if ((STATUSES as string[]).includes(status)) where.push(`t.status = ${p(status)}`)
 
-  if (f.client) where.push(`t.client_id = ${p(f.client)}`)
+  if (f.company) where.push(`t.company_id = ${p(f.company)}`)
   if (f.priority && (PRIORITIES as string[]).includes(f.priority)) where.push(`t.priority = ${p(f.priority)}`)
 
   if (f.due === 'overdue') where.push(`t.deadline < ${p(today)} and t.status in ('${OPEN_STATUSES.join("','")}')`)
@@ -49,16 +49,16 @@ export async function listTasks(orgId: string, f: TaskFilters, today: string, li
 
   if (f.q?.trim()) {
     const like = p(`%${f.q.trim()}%`)
-    where.push(`(t.title ilike ${like} or t.description ilike ${like} or c.name ilike ${like} or c.company ilike ${like})`)
+    where.push(`(t.title ilike ${like} or t.description ilike ${like} or c.name ilike ${like} or c.activity ilike ${like})`)
   }
 
   const order = SORTS[f.sort || 'deadline'] ?? SORTS.deadline
   return query<Task>(`${TASK_SELECT} where ${where.join(' and ')} order by ${order} limit ${limit}`, params)
 }
 
-export async function clientOptions(orgId: string, includeId?: string) {
+export async function companyOptions(orgId: string, includeId?: string) {
   return query<{ id: string; name: string }>(
-    `select id, name from clients where org_id = $1 and (archived_at is null or id = $2) order by name`,
+    `select id, name from companies where org_id = $1 and (archived_at is null or id = $2) order by name`,
     [orgId, includeId ?? null],
   )
 }

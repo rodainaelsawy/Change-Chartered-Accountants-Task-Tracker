@@ -8,7 +8,7 @@ import { requireSession } from '@/lib/auth'
 import { one } from '@/lib/db'
 import { formatDate, formatDateTime, todayIn } from '@/lib/dates'
 import { isOpen } from '@/lib/labels'
-import { clientOptions } from '@/lib/queries'
+import { companyOptions } from '@/lib/queries'
 import type { Task } from '@/lib/types'
 
 export const metadata = { title: 'تفاصيل المهمة' }
@@ -26,23 +26,23 @@ export default async function TaskPage({
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
 
   const task = await one<Task>(
-    `select t.*, c.name as client_name, cu.full_name as created_by_name, uu.full_name as updated_by_name
-       from tasks t join clients c on c.id = t.client_id
+    `select t.*, c.name as company_name, cu.full_name as created_by_name, uu.full_name as updated_by_name
+       from tasks t join companies c on c.id = t.company_id
        left join users cu on cu.id = t.created_by
        left join users uu on uu.id = t.updated_by
       where t.id = $1 and t.org_id = $2`,
     [id, org.id],
   )
   if (!task) notFound()
-  const clients = await clientOptions(org.id, task.client_id)
+  const companies = await companyOptions(org.id, task.company_id)
   const today = todayIn(org.timezone)
   const open = isOpen(task.status)
 
   return (
     <>
       <div className="mb-2 text-sm">
-        <Link href={`/clients/${task.client_id}`} className="text-brand-700 hover:underline">
-          {task.client_name}
+        <Link href={`/companies/${task.company_id}`} className="text-brand-700 hover:underline">
+          {task.company_name}
         </Link>
       </div>
       <PageHeader
@@ -83,7 +83,7 @@ export default async function TaskPage({
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="p-5 lg:col-span-2">
           <h2 className="mb-4 font-semibold">تعديل المهمة</h2>
-          <TaskForm task={task} clients={clients} defaultDeadline={task.deadline} orgReminderDays={org.reminder_days} />
+          <TaskForm task={task} companies={companies} defaultDeadline={task.deadline} orgReminderDays={org.reminder_days} />
         </Card>
 
         <div className="space-y-4">

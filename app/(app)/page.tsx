@@ -16,7 +16,7 @@ export default async function Dashboard() {
   const today = todayIn(org.timezone)
   const weekEnd = addDays(today, 7)
 
-  const [stats, attention, clientsCount] = await Promise.all([
+  const [stats, attention, companiesCount] = await Promise.all([
     one<{ overdue: number; today: number; week: number; done_week: number; open: number }>(
       `select
          count(*) filter (where status in ${OPEN} and deadline < $2)::int                  as overdue,
@@ -33,7 +33,7 @@ export default async function Dashboard() {
         order by t.deadline, t.priority desc limit 50`,
       [org.id, weekEnd],
     ),
-    one<{ n: number }>('select count(*)::int as n from clients where org_id = $1 and archived_at is null', [org.id]),
+    one<{ n: number }>('select count(*)::int as n from companies where org_id = $1 and archived_at is null', [org.id]),
   ])
   const s = stats!
 
@@ -49,13 +49,13 @@ export default async function Dashboard() {
         }
       />
 
-      {clientsCount!.n === 0 && (
+      {companiesCount!.n === 0 && (
         <Card className="mb-6 p-5">
-          <h2 className="font-semibold">ابدأ بإضافة العملاء</h2>
-          <p className="mt-1 text-sm text-slate-500">كل مهمة تتبع عميلًا. أضف العملاء يدويًا أو استوردهم من ملف Excel.</p>
+          <h2 className="font-semibold">ابدأ بإضافة الشركات</h2>
+          <p className="mt-1 text-sm text-slate-500">كل مهمة تتبع شركة. أضف الشركات يدويًا أو استوردهم من ملف Excel.</p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Link href="/clients/new" className={btn.primary}>
-              إضافة عميل
+            <Link href="/companies/new" className={btn.primary}>
+              إضافة شركة
             </Link>
             <Link href="/import" className={btn.secondary}>
               استيراد من Excel / CSV

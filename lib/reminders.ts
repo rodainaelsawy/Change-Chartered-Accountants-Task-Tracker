@@ -80,15 +80,15 @@ type DigestTask = {
   title: string
   deadline: string
   priority: TaskPriority
-  client_name: string
+  company_name: string
   reminder_days: number | null
 }
 
 async function sendDigests(org: Org, today: string) {
   const weekEnd = addDays(today, 7)
   const tasks = await query<DigestTask>(
-    `select t.id, t.title, t.deadline, t.priority, t.reminder_days, c.name as client_name
-       from tasks t join clients c on c.id = t.client_id
+    `select t.id, t.title, t.deadline, t.priority, t.reminder_days, c.name as company_name
+       from tasks t join companies c on c.id = t.company_id
       where t.org_id = $1 and t.status in ${OPEN} and t.deadline <= $2
       order by t.deadline, t.priority desc`,
     [org.id, weekEnd],
@@ -110,7 +110,7 @@ async function sendDigests(org: Org, today: string) {
            .map(
              (t) => `<tr style="border-bottom:1px solid #e2e8f0">
                <td style="padding:6px 0"><a href="${appUrl('/tasks/' + t.id)}" style="color:#0f172a">${escapeHtml(t.title)}</a>
-                 <div style="color:#64748b;font-size:12px">${escapeHtml(t.client_name)} · ${PRIORITY_LABEL[t.priority]}</div></td>
+                 <div style="color:#64748b;font-size:12px">${escapeHtml(t.company_name)} · ${PRIORITY_LABEL[t.priority]}</div></td>
                <td style="padding:6px 0;text-align:left;white-space:nowrap;color:#475569">${formatDate(t.deadline, 'short')}<br>
                  <span style="font-size:12px">${relativeDue(t.deadline, today)}</span></td></tr>`,
            )

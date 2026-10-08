@@ -4,12 +4,12 @@ import { requireSession } from '@/lib/auth'
 import { query } from '@/lib/db'
 import { todayIn } from '@/lib/dates'
 
-export const metadata = { title: 'العملاء' }
+export const metadata = { title: 'الشركات' }
 
 type Row = {
   id: string
   name: string
-  company: string | null
+  activity: string | null
   contact_person: string | null
   phone: string | null
   archived_at: Date | null
@@ -19,7 +19,7 @@ type Row = {
   next_deadline: string | null
 }
 
-export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ q?: string; archived?: string }> }) {
+export default async function CompaniesPage({ searchParams }: { searchParams: Promise<{ q?: string; archived?: string }> }) {
   const { org } = await requireSession()
   const sp = await searchParams
   const q = (sp.q ?? '').trim()
@@ -27,14 +27,14 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   const today = todayIn(org.timezone)
 
   const rows = await query<Row>(
-    `select c.id, c.name, c.company, c.contact_person, c.phone, c.archived_at,
+    `select c.id, c.name, c.activity, c.contact_person, c.phone, c.archived_at,
             count(t.id) filter (where t.status in ('not_started','in_progress','on_hold'))::int as open,
             count(t.id) filter (where t.status in ('not_started','in_progress','on_hold') and t.deadline < $2)::int as overdue,
             count(t.id) filter (where t.status = 'done')::int as done,
             min(t.deadline) filter (where t.status in ('not_started','in_progress','on_hold')) as next_deadline
-       from clients c left join tasks t on t.client_id = c.id
+       from companies c left join tasks t on t.company_id = c.id
       where c.org_id = $1 and (c.archived_at is not null) = $3
-        and ($4 = '' or c.name ilike '%' || $4 || '%' or c.company ilike '%' || $4 || '%'
+        and ($4 = '' or c.name ilike '%' || $4 || '%' or c.activity ilike '%' || $4 || '%'
              or c.contact_person ilike '%' || $4 || '%' or c.phone ilike '%' || $4 || '%')
       group by c.id
       order by count(t.id) filter (where t.status in ('not_started','in_progress','on_hold') and t.deadline < $2) desc, c.name`,
@@ -44,38 +44,38 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   return (
     <>
       <PageHeader
-        title={archived ? 'العملاء المؤرشفون' : 'العملاء'}
-        subtitle={`${rows.length} عميل`}
+        title={archived ? 'الشركات المؤرشفة' : 'الشركات'}
+        subtitle={`${rows.length} شركة`}
         actions={
           <>
             <Link href="/import" className={btn.secondary}>
               استيراد من Excel
             </Link>
-            <Link href="/clients/new" className={btn.primary}>
-              + عميل جديد
+            <Link href="/companies/new" className={btn.primary}>
+              + شركة جديدة
             </Link>
           </>
         }
       />
       <Card className="mb-4 p-4">
         <form className="flex flex-wrap items-center gap-2">
-          <input name="q" defaultValue={q} placeholder="بحث بالاسم أو الشركة أو الهاتف…" className={`${inputCls} max-w-sm`} />
+          <input name="q" defaultValue={q} placeholder="بحث بالاسم أو النشاط أو الهاتف…" className={`${inputCls} max-w-sm`} />
           {archived && <input type="hidden" name="archived" value="1" />}
           <button className={btn.primary}>بحث</button>
-          <Link href={archived ? '/clients' : '/clients?archived=1'} className={`${btn.ghost} ms-auto`}>
-            {archived ? 'عرض العملاء الحاليين' : 'عرض المؤرشفين'}
+          <Link href={archived ? '/companies' : '/companies?archived=1'} className={`${btn.ghost} ms-auto`}>
+            {archived ? 'عرض الشركات الحالية' : 'عرض المؤرشفة'}
           </Link>
         </form>
       </Card>
       <Card className="overflow-hidden">
         {rows.length === 0 ? (
-          <Empty>{q ? 'لا يوجد عملاء مطابقون' : archived ? 'لا يوجد عملاء مؤرشفون' : 'لم تتم إضافة عملاء بعد'}</Empty>
+          <Empty>{q ? 'لا توجد شركات مطابقة' : archived ? 'لا توجد شركات مؤرشفة' : 'لم تتم إضافة شركات بعد'}</Empty>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-right text-slate-500">
                 <tr>
-                  <th className="px-4 py-2 font-medium">العميل</th>
+                  <th className="px-4 py-2 font-medium">الشركة</th>
                   <th className="hidden px-4 py-2 font-medium md:table-cell">المسؤول</th>
                   <th className="px-4 py-2 text-center font-medium">مفتوحة</th>
                   <th className="px-4 py-2 text-center font-medium">متأخرة</th>
@@ -86,10 +86,10 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
                 {rows.map((c) => (
                   <tr key={c.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3">
-                      <Link href={`/clients/${c.id}`} className="font-medium text-slate-900 hover:text-brand-700">
+                      <Link href={`/companies/${c.id}`} className="font-medium text-slate-900 hover:text-brand-700">
                         {c.name}
                       </Link>
-                      {c.company && <div className="text-xs text-slate-500">{c.company}</div>}
+                      {c.activity && <div className="text-xs text-slate-500">{c.activity}</div>}
                     </td>
                     <td className="hidden px-4 py-3 text-slate-600 md:table-cell">
                       {c.contact_person}

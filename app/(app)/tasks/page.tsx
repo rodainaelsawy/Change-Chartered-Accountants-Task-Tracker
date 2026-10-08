@@ -4,7 +4,7 @@ import { Card, PageHeader, btn, inputCls } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
 import { todayIn } from '@/lib/dates'
 import { PRIORITIES, PRIORITY_LABEL, STATUSES, STATUS_LABEL } from '@/lib/labels'
-import { clientOptions, listTasks, type TaskFilters } from '@/lib/queries'
+import { companyOptions, listTasks, type TaskFilters } from '@/lib/queries'
 
 export const metadata = { title: 'المهام' }
 
@@ -16,15 +16,15 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
   const get = (k: string) => (typeof sp[k] === 'string' ? (sp[k] as string) : '')
   const f: TaskFilters = {
     q: get('q'),
-    client: get('client'),
+    company: get('company'),
     status: get('status') || 'open',
     priority: get('priority'),
     due: get('due'),
     sort: get('sort') || 'deadline',
   }
   const today = todayIn(org.timezone)
-  const [tasks, clients] = await Promise.all([listTasks(org.id, f, today), clientOptions(org.id)])
-  const filtered = Boolean(f.q || f.client || f.priority || f.due || f.status !== 'open')
+  const [tasks, companies] = await Promise.all([listTasks(org.id, f, today), companyOptions(org.id)])
+  const filtered = Boolean(f.q || f.company || f.priority || f.due || f.status !== 'open')
 
   return (
     <>
@@ -32,7 +32,7 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
         title="المهام"
         subtitle={`${tasks.length} مهمة`}
         actions={
-          <Link href={f.client ? `/tasks/new?client=${f.client}` : '/tasks/new'} className={btn.primary}>
+          <Link href={f.company ? `/tasks/new?company=${f.company}` : '/tasks/new'} className={btn.primary}>
             + مهمة جديدة
           </Link>
         }
@@ -41,10 +41,10 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
       {/* Plain GET form: filters live in the URL, so a filtered view can be bookmarked or shared (FR-7.1, FR-7.2) */}
       <Card className="mb-4 p-4">
         <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-          <input name="q" defaultValue={f.q} placeholder="بحث في المهام والعملاء…" className={`${inputCls} lg:col-span-2`} />
-          <select name="client" defaultValue={f.client} className={inputCls}>
-            <option value="">كل العملاء</option>
-            {clients.map((c) => (
+          <input name="q" defaultValue={f.q} placeholder="بحث في المهام والشركات…" className={`${inputCls} lg:col-span-2`} />
+          <select name="company" defaultValue={f.company} className={inputCls}>
+            <option value="">كل الشركات</option>
+            {companies.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
@@ -81,7 +81,7 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
               <select name="sort" defaultValue={f.sort} className={`${inputCls} w-auto`}>
                 <option value="deadline">موعد التسليم</option>
                 <option value="priority">الأولوية</option>
-                <option value="client">العميل</option>
+                <option value="company">الشركة</option>
                 <option value="status">الحالة</option>
                 <option value="created">الأحدث إضافة</option>
               </select>

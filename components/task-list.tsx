@@ -9,12 +9,12 @@ import { DueText, Empty, PriorityText, StatusBadge, urgency, urgencyBorder } fro
 export function TaskList({
   tasks,
   today,
-  showClient = true,
+  showCompany = true,
   empty = 'لا توجد مهام',
 }: {
   tasks: Task[]
   today: string
-  showClient?: boolean
+  showCompany?: boolean
   empty?: string
 }) {
   if (!tasks.length) return <Empty>{empty}</Empty>
@@ -46,9 +46,9 @@ export function TaskList({
                 {t.title}
               </Link>
               <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-                {showClient && (
-                  <Link href={`/clients/${t.client_id}`} className="hover:text-brand-700 hover:underline">
-                    {t.client_name}
+                {showCompany && (
+                  <Link href={`/companies/${t.company_id}`} className="hover:text-brand-700 hover:underline">
+                    {t.company_name}
                   </Link>
                 )}
                 <PriorityText priority={t.priority} />

@@ -16,7 +16,7 @@ type Row = {
   task_id: string
   title: string
   deadline: string
-  client_name: string
+  company_name: string
 }
 
 async function markAllRead() {
@@ -44,8 +44,8 @@ export default async function NotificationsPage() {
   const today = todayIn(org.timezone)
   // Only the latest reminder per task is shown (overdue reminders repeat daily).
   const rows = await query<Row>(
-    `select distinct on (n.task_id) n.id, n.kind, n.read_at, n.task_id, t.title, t.deadline, c.name as client_name
-       from notifications n join tasks t on t.id = n.task_id join clients c on c.id = t.client_id
+    `select distinct on (n.task_id) n.id, n.kind, n.read_at, n.task_id, t.title, t.deadline, c.name as company_name
+       from notifications n join tasks t on t.id = n.task_id join companies c on c.id = t.company_id
       where n.user_id = $1 and n.created_at > now() - interval '30 days'
       order by n.task_id, n.created_at desc`,
     [user.id],
@@ -82,7 +82,7 @@ export default async function NotificationsPage() {
                     {n.title}
                   </Link>
                   <div className="mt-0.5 text-xs text-slate-500">
-                    {n.client_name} · {formatDate(n.deadline, 'short')} ({relativeDue(n.deadline, today)})
+                    {n.company_name} · {formatDate(n.deadline, 'short')} ({relativeDue(n.deadline, today)})
                   </div>
                 </div>
                 {!n.read_at && (

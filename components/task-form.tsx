@@ -6,15 +6,15 @@ import { Field, btn, inputCls } from './ui'
 
 export function TaskForm({
   task,
-  clients,
-  defaultClientId,
+  companies,
+  defaultCompanyId,
   defaultDeadline,
   orgReminderDays,
   next,
 }: {
   task?: Task
-  clients: { id: string; name: string }[]
-  defaultClientId?: string
+  companies: { id: string; name: string }[]
+  defaultCompanyId?: string
   defaultDeadline: string
   orgReminderDays: number
   next?: string
@@ -27,7 +27,7 @@ export function TaskForm({
       footer={
         !task && (
           <button type="submit" name="again" value="1" className={btn.secondary}>
-            إضافة ومهمة أخرى لنفس العميل
+            إضافة ومهمة أخرى لنفس الشركة
           </button>
         )
       }
@@ -37,12 +37,12 @@ export function TaskForm({
       <Field label="عنوان المهمة" className="sm:col-span-2">
         <input name="title" required defaultValue={task?.title} className={inputCls} autoFocus={!task} />
       </Field>
-      <Field label="العميل">
-        <select name="client_id" required defaultValue={task?.client_id ?? defaultClientId ?? ''} className={inputCls}>
+      <Field label="الشركة">
+        <select name="company_id" required defaultValue={task?.company_id ?? defaultCompanyId ?? ''} className={inputCls}>
           <option value="" disabled>
-            اختر العميل…
+            اختر الشركة…
           </option>
-          {clients.map((c) => (
+          {companies.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
             </option>

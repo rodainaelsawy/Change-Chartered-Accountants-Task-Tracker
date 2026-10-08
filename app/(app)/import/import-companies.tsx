@@ -3,18 +3,21 @@
 import Link from 'next/link'
 import Papa from 'papaparse'
 import { useState, useTransition } from 'react'
-import { importClients, type ImportRow } from '@/app/actions/clients'
+import { importCompanies, type ImportRow } from '@/app/actions/companies'
 import { Alert, btn } from '@/components/ui'
 
 type FieldKey = keyof ImportRow
 
 const FIELDS: { key: FieldKey; label: string; aliases: string[] }[] = [
-  { key: 'name', label: 'اسم العميل', aliases: ['اسم العميل', 'العميل', 'الاسم', 'اسم', 'name', 'client', 'client name', 'customer'] },
-  { key: 'company', label: 'الشركة / النشاط', aliases: ['الشركة', 'اسم الشركة', 'النشاط', 'المنشأة', 'company', 'business'] },
+  { key: 'name', label: 'اسم الشركة', aliases: ['اسم الشركة', 'الشركة', 'اسم العميل', 'العميل', 'الاسم', 'اسم', 'name', 'company', 'company name', 'client'] },
+  { key: 'activity', label: 'النشاط', aliases: ['النشاط', 'نوع النشاط', 'activity', 'business', 'industry'] },
   { key: 'contact_person', label: 'الشخص المسؤول', aliases: ['المسؤول', 'الشخص المسؤول', 'جهة الاتصال', 'contact', 'contact person'] },
   { key: 'phone', label: 'الهاتف', aliases: ['الهاتف', 'رقم الهاتف', 'التليفون', 'الموبايل', 'الجوال', 'تليفون', 'موبايل', 'phone', 'mobile', 'tel'] },
   { key: 'email', label: 'البريد الإلكتروني', aliases: ['البريد', 'البريد الإلكتروني', 'الايميل', 'الإيميل', 'email', 'e-mail', 'mail'] },
   { key: 'notes', label: 'ملاحظات', aliases: ['ملاحظات', 'ملاحظة', 'notes', 'note', 'remarks'] },
+  { key: 'tax_email', label: 'البريد الضريبي', aliases: ['البريد الضريبي', 'ايميل الضرائب', 'إيميل الضرائب', 'ايميل المنظومة', 'tax email'] },
+  { key: 'tax_username', label: 'اسم المستخدم (الضرائب)', aliases: ['اسم المستخدم', 'المستخدم', 'يوزر', 'اليوزر', 'username', 'user name', 'tax username'] },
+  { key: 'tax_password', label: 'كلمة المرور (الضرائب)', aliases: ['كلمة المرور', 'كلمة السر', 'الباسورد', 'باسورد', 'password', 'tax password'] },
 ]
 
 const norm = (s: string) =>
@@ -38,9 +41,10 @@ function guessMapping(headers: string[]): Record<FieldKey, number> {
 
 const cellText = (v: unknown) => (v === null || v === undefined ? '' : v instanceof Date ? v.toISOString().slice(0, 10) : String(v).trim())
 
-const TEMPLATE = '﻿اسم العميل,الشركة,الشخص المسؤول,الهاتف,البريد الإلكتروني,ملاحظات\nشركة النور للتجارة,النور,أحمد علي,01000000000,info@example.com,\n'
+const TEMPLATE =
+  '\ufeffاسم الشركة,النشاط,الشخص المسؤول,الهاتف,البريد الإلكتروني,ملاحظات,البريد الضريبي,اسم المستخدم,كلمة المرور\nشركة النور للتجارة,تجارة,أحمد علي,01000000000,info@example.com,,tax@example.com,alnoor,\n'
 
-export function ImportClients() {
+export function ImportCompanies() {
   const [fileName, setFileName] = useState('')
   const [headers, setHeaders] = useState<string[]>([])
   const [rows, setRows] = useState<string[][]>([])
@@ -91,10 +95,10 @@ export function ImportClients() {
       <div className="space-y-2 text-sm text-slate-600">
         <p>الصف الأول في الملف يجب أن يحتوي على عناوين الأعمدة. سيتم التعرف على الأعمدة تلقائيًا ويمكنك تعديلها قبل الاستيراد.</p>
         <p>
-          العملاء الموجودون بنفس الاسم يتم تخطيهم.{' '}
+          الشركات الموجودة بنفس الاسم يتم تخطيها. كلمات المرور تُحفظ مشفّرة. المرفقات تُضاف من صفحة كل شركة.{' '}
           <a
             href={`data:text/csv;charset=utf-8,${encodeURIComponent(TEMPLATE)}`}
-            download="clients-template.csv"
+            download="companies-template.csv"
             className="text-brand-700 underline"
           >
             تحميل نموذج فارغ
@@ -116,9 +120,9 @@ export function ImportClients() {
       {error && <Alert>{error}</Alert>}
       {result && (
         <Alert kind="success">
-          تم استيراد {result.added} عميل{result.skipped > 0 && ` · تم تخطي ${result.skipped} (مكرر أو بدون اسم)`}.{' '}
-          <Link href="/clients" className="underline">
-            عرض العملاء
+          تم استيراد {result.added} شركة{result.skipped > 0 && ` · تم تخطي ${result.skipped} (مكرر أو بدون اسم)`}.{' '}
+          <Link href="/companies" className="underline">
+            عرض الشركات
           </Link>
         </Alert>
       )}
@@ -171,7 +175,7 @@ export function ImportClients() {
                     <tr key={i}>
                       {FIELDS.map((f) => (
                         <td key={f.key} className="max-w-48 truncate px-3 py-2">
-                          {r[f.key]}
+                          {f.key === 'tax_password' && r[f.key] ? '••••••' : r[f.key]}
                         </td>
                       ))}
                     </tr>
@@ -187,13 +191,13 @@ export function ImportClients() {
             disabled={pending || valid.length === 0}
             onClick={() =>
               start(async () => {
-                const r = await importClients(valid)
+                const r = await importCompanies(valid)
                 if (r.error) setError(r.error)
                 else setResult({ added: r.added, skipped: r.skipped + (rows.length - valid.length) })
               })
             }
           >
-            {pending ? 'جارٍ الاستيراد…' : `استيراد ${valid.length} عميل`}
+            {pending ? 'جارٍ الاستيراد…' : `استيراد ${valid.length} شركة`}
           </button>
         </>
       )}

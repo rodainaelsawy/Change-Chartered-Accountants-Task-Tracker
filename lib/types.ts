@@ -21,22 +21,36 @@ export interface User {
   active: boolean
 }
 
-export interface Client {
+export interface Company {
   id: string
   name: string
-  company: string | null
+  activity: string | null
   contact_person: string | null
   email: string | null
   phone: string | null
   notes: string | null
+  tax_email: string | null
+  tax_username: string | null
+  tax_password_enc: string | null
   archived_at: Date | null
   created_at: Date
 }
 
+export type AttachmentKind = 'commercial_register' | 'tax_card' | 'other'
+
+export interface Attachment {
+  id: string
+  kind: AttachmentKind
+  file_name: string
+  size_bytes: number
+  created_at: Date
+  uploaded_by_name: string | null
+}
+
 export interface Task {
   id: string
-  client_id: string
-  client_name: string
+  company_id: string
+  company_name: string
   title: string
   description: string | null
   deadline: string

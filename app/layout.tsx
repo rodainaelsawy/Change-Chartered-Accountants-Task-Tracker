@@ -3,7 +3,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: { default: 'متابعة المهام', template: '%s · متابعة المهام' },
-  description: 'متابعة مهام العملاء ومواعيد التسليم',
+  description: 'متابعة مهام الشركات ومواعيد التسليم',
 }
 
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#0f766e' }

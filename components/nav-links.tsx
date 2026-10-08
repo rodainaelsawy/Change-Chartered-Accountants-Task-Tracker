@@ -8,7 +8,7 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
   const links = [
     { href: '/', label: 'لوحة المتابعة', match: (p: string) => p === '/' },
     { href: '/tasks', label: 'المهام', match: (p: string) => p.startsWith('/tasks') },
-    { href: '/clients', label: 'العملاء', match: (p: string) => p.startsWith('/clients') || p.startsWith('/import') },
+    { href: '/companies', label: 'الشركات', match: (p: string) => p.startsWith('/companies') || p.startsWith('/import') },
     { href: '/settings', label: isAdmin ? 'الإعدادات والفريق' : 'الإعدادات', match: (p: string) => p.startsWith('/settings') },
   ]
   return (

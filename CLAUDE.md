@@ -13,6 +13,7 @@ Task & deadline tracker for an accounting office. Arabic-only UI, RTL (`<html la
 - **Tax data:** `companies.tax_email`, `tax_username`, `tax_password_enc`. Encrypt/decrypt only via `lib/crypto.ts` (`ENCRYPTION_KEY`). Never send the decrypted password in page HTML; use the `revealTaxPassword` server action.
 - **Attachments:** `company_attachments` (kinds `commercial_register`, `tax_card` = one file each, replaced on upload; `other` = many). PDF only, ≤ 10 MB. Storage in `lib/storage.ts`: Vercel Blob (private) when `BLOB_READ_WRITE_TOKEN` is set, else `.uploads/`. Uploads: `/api/attachments/upload` (Blob: client token + `confirmBlobUpload`; local: multipart). Downloads only via `/api/attachments/[id]` (session + org check). Deleting a company must delete its files (`deleteCompanyFiles`).
 - **Reminders:** `lib/reminders.ts`. `syncNotifications` is idempotent; call it after any task change. `runDaily` runs once per org per day (layout + `/api/cron/reminders`).
+- **Mandatory fields:** put `required` on the control inside `<Field>` (the red * appears automatically). `ActionForm` validates before submit with Arabic messages; use its `oneOf` prop for "at least one of" groups and mark those fields `required="group"`. Always repeat the same rules in the server action. Company: name, contact person, phone or email (also enforced in the Excel import).
 - UI strings are Arabic; status/priority labels live in `lib/labels.ts`. Use Tailwind; shared classes in `components/ui.tsx`. Use `ms-`/`me-` (logical) spacing where direction matters.
 
 ## Checks

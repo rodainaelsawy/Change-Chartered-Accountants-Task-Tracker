@@ -89,7 +89,7 @@ export default async function SettingsPage() {
                 <input name="email" type="email" required className={`${inputCls} ltr`} />
               </Field>
               <Field label="الصلاحية">
-                <select name="role" className={inputCls} defaultValue="member">
+                <select name="role" required className={inputCls} defaultValue="member">
                   <option value="member">عضو</option>
                   <option value="admin">مدير (يدير الفريق والإعدادات)</option>
                 </select>

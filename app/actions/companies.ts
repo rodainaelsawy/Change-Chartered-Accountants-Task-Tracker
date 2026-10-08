@@ -19,6 +19,12 @@ export async function saveCompany(_: FormState, fd: FormData): Promise<FormState
   const id = str(fd, 'id')
   const name = str(fd, 'name')
   if (!name) return { error: 'اسم الشركة مطلوب' }
+  if (!str(fd, 'contact_person')) return { error: 'اسم الشخص المسؤول مطلوب' }
+  if (!str(fd, 'phone') && !str(fd, 'email')) return { error: 'أدخل رقم الهاتف أو البريد الإلكتروني (واحد على الأقل)' }
+  for (const k of ['email', 'tax_email']) {
+    const v = str(fd, k)
+    if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return { error: 'البريد الإلكتروني غير صحيح' }
+  }
 
   const dup = await one(
     'select 1 from companies where org_id = $1 and lower(name) = lower($2) and id <> coalesce($3::uuid, gen_random_uuid())',
@@ -160,7 +166,7 @@ export async function importCompanies(rows: ImportRow[]): Promise<{ added: numbe
       tax_username: t(r.tax_username),
       tax_password: t(r.tax_password),
     }))
-    .filter((r) => r.name)
+    .filter((r) => r.name && r.contact_person && (r.phone || r.email))
   if (clean.length > 5000) return { added: 0, skipped: 0, error: 'الحد الأقصى 5000 صف في المرة الواحدة' }
 
   const added = await tx(async (c) => {

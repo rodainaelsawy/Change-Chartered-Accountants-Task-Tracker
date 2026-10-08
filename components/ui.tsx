@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { isValidElement } from 'react'
 import { PRIORITY_LABEL, PRIORITY_STYLE, STATUS_LABEL, STATUS_STYLE, isOpen } from '@/lib/labels'
 import { daysBetween, relativeDue } from '@/lib/dates'
 import type { TaskPriority, TaskStatus } from '@/lib/types'
@@ -40,20 +41,39 @@ export function PageHeader({
   )
 }
 
+/** Red asterisk shown next to mandatory field labels. */
+export function RequiredMark() {
+  return (
+    <span className="ms-0.5 text-red-600" aria-hidden="true">
+      *
+    </span>
+  )
+}
+
+/** Label + control. A control with the `required` attribute automatically gets a red asterisk. */
 export function Field({
   label,
   hint,
   children,
   className = '',
+  required,
 }: {
   label: string
   hint?: string
   children: React.ReactNode
   className?: string
+  /** Override the automatic detection; 'group' marks one field of an "at least one of" group. */
+  required?: boolean | 'group'
 }) {
+  const auto = isValidElement<{ required?: boolean }>(children) && Boolean(children.props.required)
+  const mark = required ?? auto
   return (
     <label className={`block ${className}`}>
-      <span className="mb-1 block text-sm font-medium text-slate-700">{label}</span>
+      <span className="mb-1 block text-sm font-medium text-slate-700">
+        {label}
+        {mark === true && <RequiredMark />}
+        {mark === 'group' && <span className="ms-0.5 text-red-600" aria-hidden="true">*¹</span>}
+      </span>
       {children}
       {hint && <span className="mt-1 block text-xs text-slate-500">{hint}</span>}
     </label>

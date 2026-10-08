@@ -18,6 +18,7 @@ export function TaskForm({
   next,
   today,
   cancelHref,
+  actionsTarget,
 }: {
   task?: Task
   companies: { id: string; name: string }[]
@@ -30,6 +31,8 @@ export function TaskForm({
   next?: string
   today: string
   cancelHref?: string
+  /** Show save/cancel in this element (e.g. the page header) instead of under the form. */
+  actionsTarget?: string
 }) {
   const recurring = Boolean(task?.series_id)
   return (
@@ -39,6 +42,8 @@ export function TaskForm({
       className="grid gap-4 sm:grid-cols-2"
       checkGroups={ASSIGNEES_CHECK}
       cancelHref={cancelHref}
+      id={actionsTarget ? 'task-form' : undefined}
+      actionsTarget={actionsTarget}
       footer={
         !task && (
           <button type="submit" name="again" value="1" className={btn.secondary}>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { startTransition, useActionState, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Spinner, SubmitButton } from './submit-button'
 import { Alert, RequiredMark, btn } from './ui'
 
@@ -54,6 +55,8 @@ export function ActionForm({
   showRequiredNote = true,
   cancelHref,
   warnUnsaved = true,
+  id,
+  actionsTarget,
 }: {
   action: (state: State, fd: FormData) => Promise<State>
   children: React.ReactNode
@@ -70,11 +73,18 @@ export function ActionForm({
   cancelHref?: string
   /** Ask before leaving the page with unsaved changes (H5 error prevention). */
   warnUnsaved?: boolean
+  id?: string
+  /** Id of an element elsewhere on the page (e.g. the page header) to show the save/cancel buttons in, instead of under the form. Needs `id`. */
+  actionsTarget?: string
 }) {
   const [state, formAction, pending] = useActionState(action, undefined)
   const [summary, setSummary] = useState('')
   const ref = useRef<HTMLFormElement>(null)
   const [dirty, setDirty] = useState(false)
+  const [target, setTarget] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    if (actionsTarget) setTarget(document.getElementById(actionsTarget))
+  }, [actionsTarget])
   useEffect(() => {
     if (state?.ok) setDirty(false)
     if (state?.error) setDirty(true) // nothing was saved
@@ -148,8 +158,24 @@ export function ActionForm({
     return true
   }
 
+  const buttons = (
+    <>
+      <button type="submit" form={id} disabled={pending} aria-busy={pending} className={`${submitClassName} disabled:cursor-wait`}>
+        {pending && <Spinner />}
+        {pending ? 'جارٍ الحفظ…' : submitLabel}
+      </button>
+      {footer}
+      {cancelHref && (
+        <Link href={cancelHref} data-cancel="1" className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">
+          إلغاء
+        </Link>
+      )}
+    </>
+  )
+
   return (
     <form
+      id={id}
       ref={ref}
       className={className}
       noValidate
@@ -213,18 +239,7 @@ export function ActionForm({
         </div>
       )}
       {children}
-      <div className="col-span-full flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={pending} aria-busy={pending} className={`${submitClassName} disabled:cursor-wait`}>
-          {pending && <Spinner />}
-          {pending ? 'جارٍ الحفظ…' : submitLabel}
-        </button>
-        {footer}
-        {cancelHref && (
-          <Link href={cancelHref} data-cancel="1" className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">
-            إلغاء
-          </Link>
-        )}
-      </div>
+      {actionsTarget ? (target && createPortal(buttons, target)) : <div className="col-span-full flex flex-wrap items-center gap-3">{buttons}</div>}
     </form>
   )
 }

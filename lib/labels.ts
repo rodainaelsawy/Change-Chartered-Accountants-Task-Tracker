@@ -51,3 +51,13 @@ export const FREQ_LABEL = {
   quarterly: 'كل 3 أشهر',
   yearly: 'سنويًا',
 } as const
+
+/** Arabic number agreement: 1 → "مهمة واحدة", 2 → "مهمتان", 3–10 → "5 مهام", 11+ → "12 مهمة". */
+function counted(n: number, one: string, two: string, few: string, many: string) {
+  if (n === 1) return one
+  if (n === 2) return two
+  if (n >= 3 && n <= 10) return `${n} ${few}`
+  return `${n} ${many}`
+}
+export const tasksCount = (n: number) => counted(n, 'مهمة واحدة', 'مهمتان', 'مهام', 'مهمة')
+export const companiesCount = (n: number) => counted(n, 'شركة واحدة', 'شركتان', 'شركات', 'شركة')

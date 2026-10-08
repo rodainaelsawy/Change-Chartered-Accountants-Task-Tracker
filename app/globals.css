@@ -47,3 +47,25 @@ label[data-error]::after,
 [data-group][data-error] {
   border-color: #dc2626 !important;
 }
+
+/* Printing / Save as PDF */
+@media print {
+  @page {
+    margin: 12mm;
+  }
+  body {
+    background: #fff;
+  }
+  .shadow-sm,
+  .shadow-md {
+    box-shadow: none !important;
+  }
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+  li,
+  tr {
+    break-inside: avoid;
+  }
+}

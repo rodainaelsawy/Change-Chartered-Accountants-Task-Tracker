@@ -79,3 +79,16 @@ export async function teamMembers(orgId: string) {
     [orgId],
   )
 }
+
+/** Reads the task-list filters from URL search params (shared by the tasks page and the Excel export). */
+export function parseTaskFilters(get: (k: string) => string, userId: string): TaskFilters {
+  return {
+    q: get('q'),
+    company: get('company'),
+    assignee: get('assignee') === 'me' ? userId : get('assignee'),
+    status: get('status') || 'open',
+    priority: get('priority'),
+    due: get('due'),
+    sort: get('sort') || 'deadline',
+  }
+}

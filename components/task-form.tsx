@@ -2,9 +2,9 @@ import { saveTask } from '@/app/actions/tasks'
 import { FREQ_LABEL, PRIORITIES, PRIORITY_LABEL, STATUSES, STATUS_LABEL } from '@/lib/labels'
 import type { Task } from '@/lib/types'
 import { ActionForm } from './action-form'
-import { Field, RequiredMark, btn, inputCls } from './ui'
+import { ASSIGNEES_CHECK, AssigneePicker, type TeamMember } from './assignee-picker'
+import { Field, btn, inputCls } from './ui'
 
-export type TeamMember = { id: string; full_name: string; active: boolean }
 
 export function TaskForm({
   task,
@@ -26,15 +26,13 @@ export function TaskForm({
   orgReminderDays: number
   next?: string
 }) {
-  // Inactive members are listed only if they are already assigned to this task.
-  const members = team.filter((m) => m.active || assigneeIds.includes(m.id))
   const recurring = Boolean(task?.series_id)
   return (
     <ActionForm
       action={saveTask}
       submitLabel={task ? 'حفظ التعديلات' : 'إضافة المهمة'}
       className="grid gap-4 sm:grid-cols-2"
-      checkGroups={[{ name: 'assignees', message: 'اختر مسؤولًا واحدًا على الأقل' }]}
+      checkGroups={ASSIGNEES_CHECK}
       footer={
         !task && (
           <button type="submit" name="again" value="1" className={btn.secondary}>
@@ -64,21 +62,7 @@ export function TaskForm({
         <input name="deadline" type="date" required defaultValue={task?.deadline ?? defaultDeadline} className={inputCls} />
       </Field>
 
-      <fieldset data-group="assignees" className="rounded-lg border border-slate-300 p-3 sm:col-span-2">
-        <legend className="px-1 text-sm font-medium text-slate-700">
-          المسؤولون
-          <RequiredMark />
-        </legend>
-        <div className="flex flex-wrap gap-x-5 gap-y-2">
-          {members.map((m) => (
-            <label key={m.id} className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="assignees" value={m.id} defaultChecked={assigneeIds.includes(m.id)} className="h-4 w-4" />
-              <span className={m.active ? '' : 'text-slate-400 line-through'}>{m.full_name}</span>
-            </label>
-          ))}
-        </div>
-        <p className="mt-2 text-xs text-slate-500">تصل التذكيرات للمسؤولين فقط.</p>
-      </fieldset>
+      <AssigneePicker team={team} selected={assigneeIds} className="sm:col-span-2" />
 
       <Field label="الأولوية">
         <select name="priority" required defaultValue={task?.priority ?? 'medium'} className={inputCls}>

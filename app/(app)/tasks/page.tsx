@@ -2,9 +2,10 @@ import Link from 'next/link'
 import { TaskList } from '@/components/task-list'
 import { Card, PageHeader, btn, inputCls } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
-import { todayIn } from '@/lib/dates'
-import { PRIORITIES, PRIORITY_LABEL, STATUSES, STATUS_LABEL } from '@/lib/labels'
-import { companyOptions, listTasks, teamMembers, type TaskFilters } from '@/lib/queries'
+import { formatDate, todayIn } from '@/lib/dates'
+import { PRIORITIES, PRIORITY_LABEL, STATUSES, STATUS_LABEL, tasksCount } from '@/lib/labels'
+import { companyOptions, listTasks, parseTaskFilters, teamMembers, type TaskFilters } from '@/lib/queries'
+import { PrintButton } from '@/components/print-button'
 
 export const metadata = { title: 'المهام' }
 
@@ -14,15 +15,7 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
   const { org, user } = await requireSession()
   const sp = await searchParams
   const get = (k: string) => (typeof sp[k] === 'string' ? (sp[k] as string) : '')
-  const f: TaskFilters = {
-    q: get('q'),
-    company: get('company'),
-    assignee: get('assignee') === 'me' ? user.id : get('assignee'),
-    status: get('status') || 'open',
-    priority: get('priority'),
-    due: get('due'),
-    sort: get('sort') || 'deadline',
-  }
+  const f: TaskFilters = parseTaskFilters(get, user.id)
   const today = todayIn(org.timezone)
   const [tasks, companies, team] = await Promise.all([listTasks(org.id, f, today), companyOptions(org.id), teamMembers(org.id)])
   const filtered = Boolean(f.q || f.company || f.assignee || f.priority || f.due || f.status !== 'open')
@@ -32,15 +25,26 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
     <>
       <PageHeader
         title={mine ? 'مهامي' : 'المهام'}
-        subtitle={`${tasks.length} مهمة`}
+        subtitle={tasksCount(tasks.length)}
         actions={
-          <Link href={f.company ? `/tasks/new?company=${f.company}` : '/tasks/new'} className={btn.primary}>
-            + مهمة جديدة
-          </Link>
+          <>
+            <Link href="/templates" className={btn.secondary}>
+              القوالب
+            </Link>
+            <Link href={f.company ? `/tasks/bulk?company=${f.company}` : '/tasks/bulk'} className={btn.secondary}>
+              إضافة عدة مهام
+            </Link>
+            <Link href={f.company ? `/tasks/new?company=${f.company}` : '/tasks/new'} className={btn.primary}>
+              + مهمة جديدة
+            </Link>
+          </>
         }
       />
 
-      <div className="mb-3 flex gap-1">
+      <p className="mb-2 hidden text-sm text-slate-600 print:block">
+        {org.name} · طُبعت في {formatDate(today)}
+      </p>
+      <div className="mb-3 flex gap-1 print:hidden">
         <Link href="/tasks" className={`rounded-lg px-3 py-1.5 text-sm font-medium ${!mine ? 'bg-brand-50 text-brand-800' : 'text-slate-600 hover:bg-slate-100'}`}>
           كل المهام
         </Link>
@@ -50,7 +54,7 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
       </div>
 
       {/* Plain GET form: filters live in the URL, so a filtered view can be bookmarked or shared (FR-7.1, FR-7.2) */}
-      <Card className="mb-4 p-4">
+      <Card className="mb-4 p-4 print:hidden">
         <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
           <input name="q" defaultValue={f.q} placeholder="بحث في المهام والشركات…" className={`${inputCls} lg:col-span-2`} />
           <select name="company" defaultValue={f.company} className={inputCls}>
@@ -108,6 +112,12 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
               </select>
             </label>
             <button className={btn.primary}>تطبيق</button>
+            <span className="ms-auto flex gap-2">
+              <a href={`/api/export/tasks?${new URLSearchParams(Object.entries(sp).filter(([, v]) => typeof v === 'string') as [string, string][])}`} className={btn.secondary}>
+                تصدير Excel
+              </a>
+              <PrintButton className={btn.secondary} />
+            </span>
             {filtered && (
               <Link href="/tasks" className={btn.ghost}>
                 مسح الفلاتر

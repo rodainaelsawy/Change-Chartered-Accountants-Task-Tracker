@@ -3,6 +3,7 @@ import { Card, Empty, PageHeader, btn, inputCls } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
 import { query } from '@/lib/db'
 import { todayIn } from '@/lib/dates'
+import { companiesCount } from '@/lib/labels'
 
 export const metadata = { title: 'الشركات' }
 
@@ -45,7 +46,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
     <>
       <PageHeader
         title={archived ? 'الشركات المؤرشفة' : 'الشركات'}
-        subtitle={`${rows.length} شركة`}
+        subtitle={companiesCount(rows.length)}
         actions={
           <>
             <Link href="/import" className={btn.secondary}>

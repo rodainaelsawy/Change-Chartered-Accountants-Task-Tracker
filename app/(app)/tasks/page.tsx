@@ -1,10 +1,14 @@
 import Link from 'next/link'
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { RememberFilters } from '@/components/remember-filters'
+import { TASK_FILTERS_COOKIE } from '@/lib/filters-cookie'
 import { TaskList } from '@/components/task-list'
 import { Card, PageHeader, btn, inputCls } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
 import { formatDate, todayIn } from '@/lib/dates'
 import { PRIORITIES, PRIORITY_LABEL, STATUSES, STATUS_LABEL, tasksCount } from '@/lib/labels'
-import { companyOptions, listTasks, parseTaskFilters, teamMembers, type TaskFilters } from '@/lib/queries'
+import { TASK_FILTER_KEYS, companyOptions, filterQuery, listTasks, parseTaskFilters, teamMembers, type TaskFilters } from '@/lib/queries'
 import { PrintButton } from '@/components/print-button'
 
 export const metadata = { title: 'المهام' }
@@ -15,10 +19,26 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
   const { org, user } = await requireSession()
   const sp = await searchParams
   const get = (k: string) => (typeof sp[k] === 'string' ? (sp[k] as string) : '')
+
+  // Coming back to the list without filters in the URL → re-apply the last filters used (unless "مسح الفلاتر" was pressed).
+  if (!Object.keys(sp).some((k) => (TASK_FILTER_KEYS as readonly string[]).includes(k)) && !get('reset')) {
+    const raw = (await cookies()).get(TASK_FILTERS_COOKIE)?.value
+    if (raw) {
+      const saved = new URLSearchParams(decodeURIComponent(raw))
+      const qs = filterQuery((k) => saved.get(k) ?? '')
+      const msg = get('msg')
+      if (qs) redirect(`/tasks?${qs}${msg ? `&msg=${encodeURIComponent(msg)}` : ''}`)
+    }
+  }
+  const current = filterQuery(get)
+  const tabHref = (assignee: string) => {
+    const qs = filterQuery(get, { assignee })
+    return qs ? `/tasks?${qs}` : '/tasks?reset=1'
+  }
   const f: TaskFilters = parseTaskFilters(get, user.id)
   const today = todayIn(org.timezone)
   const [tasks, companies, team] = await Promise.all([listTasks(org.id, f, today), companyOptions(org.id), teamMembers(org.id)])
-  const filtered = Boolean(f.q || f.company || f.assignee || f.priority || f.due || f.status !== 'open')
+  const filtered = Boolean(f.q || f.company || f.assignee || f.priority || f.due || f.status !== 'all')
   const mine = f.assignee === user.id
 
   return (
@@ -45,10 +65,10 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
         {org.name} · طُبعت في {formatDate(today)}
       </p>
       <div className="mb-3 flex gap-1 print:hidden">
-        <Link href="/tasks" className={`rounded-lg px-3 py-1.5 text-sm font-medium ${!mine ? 'bg-brand-50 text-brand-800' : 'text-slate-600 hover:bg-slate-100'}`}>
+        <Link href={tabHref('')} className={`rounded-lg px-3 py-1.5 text-sm font-medium ${!mine ? 'bg-brand-50 text-brand-800' : 'text-slate-600 hover:bg-slate-100'}`}>
           كل المهام
         </Link>
-        <Link href="/tasks?assignee=me" className={`rounded-lg px-3 py-1.5 text-sm font-medium ${mine ? 'bg-brand-50 text-brand-800' : 'text-slate-600 hover:bg-slate-100'}`}>
+        <Link href={tabHref('me')} className={`rounded-lg px-3 py-1.5 text-sm font-medium ${mine ? 'bg-brand-50 text-brand-800' : 'text-slate-600 hover:bg-slate-100'}`}>
           مهامي
         </Link>
       </div>
@@ -76,8 +96,8 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
               ))}
           </select>
           <select name="status" defaultValue={f.status} className={inputCls}>
-            <option value="open">المفتوحة</option>
             <option value="all">كل الحالات</option>
+            <option value="open">المفتوحة</option>
             <option value="closed">المنجزة والملغاة</option>
             {STATUSES.map((s) => (
               <option key={s} value={s}>
@@ -119,7 +139,7 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
               <PrintButton className={btn.secondary} />
             </span>
             {filtered && (
-              <Link href="/tasks" className={btn.ghost}>
+              <Link href="/tasks?reset=1" className={btn.ghost}>
                 مسح الفلاتر
               </Link>
             )}
@@ -127,8 +147,9 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
         </form>
       </Card>
 
+      <RememberFilters qs={current} reset={Boolean(get('reset'))} />
       <Card className="overflow-hidden">
-        <TaskList tasks={tasks} today={today} empty={filtered ? 'لا توجد مهام مطابقة' : 'لا توجد مهام مفتوحة'} />
+        <TaskList tasks={tasks} today={today} empty={filtered ? 'لا توجد مهام مطابقة' : 'لا توجد مهام بعد'} />
       </Card>
     </>
   )

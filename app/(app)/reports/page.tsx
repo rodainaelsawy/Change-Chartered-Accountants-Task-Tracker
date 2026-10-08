@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { RememberFilters } from '@/components/remember-filters'
+import { rememberedFilters } from '@/lib/remember-filters'
 import { PrintButton } from '@/components/print-button'
 import { Card, Empty, PageHeader, btn, inputCls } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
@@ -27,10 +29,11 @@ const NUM = 'px-3 py-2 text-center tabular-nums'
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; company?: string; done?: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const { org } = await requireSession()
-  const sp = await searchParams
+  const remembered = await rememberedFilters('reports', await searchParams, ['from', 'to', 'company', 'done'])
+  const sp = { from: remembered.get('from'), to: remembered.get('to'), company: remembered.get('company'), done: remembered.get('done') }
   const today = todayIn(org.timezone)
   const { from, to } = reportRange(sp.from, sp.to, today)
   const company = /^[0-9a-f-]{36}$/i.test(sp.company ?? '') ? sp.company : undefined
@@ -70,6 +73,7 @@ export default async function ReportsPage({
 
   return (
     <>
+      <RememberFilters page="reports" qs={remembered.qs} reset={remembered.reset} />
       <PageHeader
         title="التقارير"
         subtitle={`${org.name} · من ${formatDate(from)} إلى ${formatDate(to)}`}

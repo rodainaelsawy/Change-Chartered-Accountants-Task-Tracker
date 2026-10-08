@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { BackButton } from '@/components/back-button'
 import { SHORTCUTS } from '@/lib/shortcuts'
 import { kbd } from '@/components/side-tips'
 import { Card, PageHeader } from '@/components/ui'
@@ -88,6 +89,7 @@ const SECTIONS: { id: string; title: string; body: React.ReactNode }[] = [
           أو طباعة/حفظ PDF.
         </li>
         <li>يمكن أيضًا تصدير قائمة المهام بعد الفلترة إلى Excel من صفحة المهام.</li>
+        <li>الفلاتر التي تختارها (المهام، الشركات، التقويم، التقارير، لوحة المتابعة) تبقى مطبَّقة عند الخروج والعودة للصفحة. في المهام اضغط «مسح الفلاتر» للعودة للوضع الافتراضي.</li>
       </ul>
     ),
   },
@@ -105,6 +107,7 @@ export default async function HelpPage() {
   await requireSession()
   return (
     <>
+      <BackButton />
       <PageHeader title="المساعدة ودليل الاستخدام" subtitle="إجابات سريعة لأكثر الأسئلة شيوعًا" />
       <div className="grid gap-6 xl:grid-cols-4">
         <Card className="h-fit p-4 xl:sticky xl:top-24">

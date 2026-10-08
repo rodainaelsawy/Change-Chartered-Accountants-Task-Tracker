@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { RememberFilters } from '@/components/remember-filters'
+import { rememberedFilters } from '@/lib/remember-filters'
 import { TaskList } from '@/components/task-list'
 import { Card, PageHeader, StatCard, btn } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
@@ -12,9 +14,10 @@ export const metadata = { title: 'لوحة المتابعة' }
 
 const OPEN = `('not_started','in_progress','on_hold')`
 
-export default async function Dashboard({ searchParams }: { searchParams: Promise<{ scope?: string }> }) {
+export default async function Dashboard({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { user, org } = await requireSession()
-  const { scope } = await searchParams
+  const remembered = await rememberedFilters('dashboard', await searchParams, ['scope'])
+  const scope = remembered.get('scope')
   // Admins see the whole office by default; members see their own tasks. Both can switch.
   const mine = scope ? scope === 'mine' : user.role !== 'admin'
   const mineSql = (param: string) => (mine ? `and ${assignedTo(param)}` : `and ${param}::uuid is not null`)
@@ -63,6 +66,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
   return (
     <>
+      <RememberFilters page="dashboard" qs={remembered.qs} reset={remembered.reset} />
       <PageHeader
         title={`مرحبًا ${user.full_name.split(' ')[0] || ''}`}
         subtitle={`${formatWeekday(today)}، ${formatDate(today)}`}

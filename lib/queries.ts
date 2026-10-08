@@ -8,7 +8,7 @@ export type TaskFilters = {
   q?: string
   company?: string
   assignee?: string // a user id
-  status?: string // 'open' (default) | 'all' | 'closed' | a TaskStatus
+  status?: string // 'all' (default) | 'open' | 'closed' | a TaskStatus
   priority?: string
   due?: string // 'overdue' | 'today' | 'week' | 'later' | ''
   sort?: string // 'deadline' | 'company' | 'priority' | 'status' | 'created'
@@ -43,7 +43,7 @@ export async function listTasks(orgId: string, f: TaskFilters, today: string, li
     return `$${params.length}`
   }
 
-  const status = f.status || 'open'
+  const status = f.status || 'all'
   if (status === 'open') where.push(`t.status in ('${OPEN_STATUSES.join("','")}')`)
   else if (status === 'closed') where.push(`t.status in ('done','cancelled')`)
   else if ((STATUSES as string[]).includes(status)) where.push(`t.status = ${p(status)}`)
@@ -80,13 +80,26 @@ export async function teamMembers(orgId: string) {
   )
 }
 
+/** URL params that make up the task-list filters (remembered between visits). */
+export const TASK_FILTER_KEYS = ['q', 'company', 'assignee', 'status', 'priority', 'due', 'sort'] as const
+
+/** Only the non-empty filter params, as a query string. */
+export function filterQuery(get: (k: string) => string, extra: Record<string, string> = {}) {
+  const out = new URLSearchParams()
+  for (const k of TASK_FILTER_KEYS) {
+    const v = k in extra ? extra[k] : get(k)
+    if (v) out.set(k, v)
+  }
+  return out.toString()
+}
+
 /** Reads the task-list filters from URL search params (shared by the tasks page and the Excel export). */
 export function parseTaskFilters(get: (k: string) => string, userId: string): TaskFilters {
   return {
     q: get('q'),
     company: get('company'),
     assignee: get('assignee') === 'me' ? userId : get('assignee'),
-    status: get('status') || 'open',
+    status: get('status') || 'all',
     priority: get('priority'),
     due: get('due'),
     sort: get('sort') || 'deadline',

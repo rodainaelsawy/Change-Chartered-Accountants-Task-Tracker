@@ -3,6 +3,7 @@ import { after } from 'next/server'
 import { Suspense } from 'react'
 import { logout } from '@/app/actions/auth'
 import { KeyboardShortcuts } from '@/components/keyboard-shortcuts'
+import { NavTracker } from '@/components/back-button'
 import { NavLinks } from '@/components/nav-links'
 import { SubmitButton } from '@/components/submit-button'
 import { FlashFromUrl, ToastProvider } from '@/components/toast'
@@ -88,6 +89,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <FlashFromUrl />
       </Suspense>
       <KeyboardShortcuts />
+      <NavTracker />
     </ToastProvider>
   )
 }

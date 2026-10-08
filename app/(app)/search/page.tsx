@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { BackButton } from '@/components/back-button'
 import { TaskList } from '@/components/task-list'
 import { Card, Empty, PageHeader, inputCls, btn } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
@@ -34,6 +35,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   return (
     <>
+      <BackButton />
       <PageHeader title="بحث" subtitle={q ? `نتائج «${q}»: ${companiesCount(companies.length)} و${tasksCount(tasks.length)}` : 'ابحث بالاسم أو النشاط أو الهاتف أو عنوان المهمة'} />
       <Card className="mb-4 p-4">
         <form className="flex gap-2" role="search">

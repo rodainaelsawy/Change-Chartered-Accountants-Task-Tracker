@@ -4,7 +4,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Change Chartered Accountants" width={600} height={150} className="mx-auto mb-3 h-14 w-auto" />
+          <img src="/logo.png" alt="Change Chartered Accountants" width={600} height={150} className="logo mx-auto mb-3 h-14 w-auto" />
           <div className="text-lg font-bold text-slate-900">متابعة المهام</div>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">{children}</div>

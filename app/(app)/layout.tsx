@@ -4,7 +4,12 @@ import { Suspense } from 'react'
 import { logout } from '@/app/actions/auth'
 import { KeyboardShortcuts } from '@/components/keyboard-shortcuts'
 import { NavTracker } from '@/components/back-button'
-import { NavLinks } from '@/components/nav-links'
+import { AppShell } from '@/components/app-shell'
+import { ThemeToggle } from '@/components/theme-toggle'
+import { Bell, CircleHelp, LogOut, Search } from 'lucide-react'
+import { todayIn } from '@/lib/dates'
+import { OPEN_SQL, ROLE_LABEL } from '@/lib/labels'
+import { visibleTo } from '@/lib/permissions'
 import { SubmitButton } from '@/components/submit-button'
 import { FlashFromUrl, ToastProvider } from '@/components/toast'
 import { requireSession } from '@/lib/auth'
@@ -19,49 +24,65 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // First visit of the day creates today's reminders; the digest email is sent after the response.
   await runDaily(org, { deferEmail: (fn) => after(fn) })
 
-  const { n: unread } = (await one<{ n: number }>(
-    'select count(*)::int as n from notifications where user_id = $1 and read_at is null',
-    [user.id],
+  const today = todayIn(org.timezone)
+  const admin = user.role === 'admin'
+  const counts = (await one<{ unread: number; overdue: number; to_review: number }>(
+    `select
+       (select count(*)::int from notifications where user_id = $1 and read_at is null) as unread,
+       (select count(*)::int from tasks t where t.org_id = $2 and t.status in ${OPEN_SQL} and t.deadline < $3
+           and ${visibleTo(user, '$1')}) as overdue,
+       (select count(*)::int from tasks t where t.org_id = $2 and t.status = 'review'
+           and (${admin} or exists (select 1 from task_followers f where f.task_id = t.id and f.user_id = $1))) as to_review`,
+    [user.id, org.id, today],
   ))!
+  const unread = counts.unread
 
   return (
     <ToastProvider>
-      <div className="min-h-screen">
-        <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur print:hidden">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 lg:px-8">
-            <Link href="/" className="flex min-w-0 flex-1 items-center lg:flex-none" title="لوحة المتابعة">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt={org.name} width={600} height={150} className="h-9 w-auto shrink-0 sm:h-10" />
+      <AppShell
+        isAdmin={admin}
+        orgName={org.name}
+        overdue={counts.overdue}
+        toReview={counts.to_review}
+        footer={
+          <div className="flex items-center gap-2">
+            <Link href="/settings" className="flex min-w-0 flex-1 items-center gap-2 rounded-lg p-2 hover:bg-slate-100" title="بياناتي والإعدادات">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 font-bold text-brand-800">
+                {(user.full_name || user.email).trim().charAt(0)}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-medium text-slate-900">{user.full_name || user.email}</span>
+                <span className="block text-xs text-slate-500">{ROLE_LABEL[user.role]}</span>
+              </span>
             </Link>
-
-            <div className="flex shrink-0 items-center gap-0.5 sm:gap-1 lg:order-last lg:ms-auto">
-              {/* Global search (H6 recognition, H7 efficiency). Shortcut: "/" */}
-              <form action="/search" className="hidden xl:block" role="search">
-                <label className="relative block">
-                  <span className="sr-only">بحث</span>
-                  <input
-                    id="global-search"
-                    name="q"
-                    placeholder="بحث في الشركات والمهام…  ( / )"
-                    className="w-72 rounded-lg border border-slate-300 bg-slate-50 py-2 pe-3 ps-9 text-sm outline-none focus:border-brand-600 focus:bg-white focus:ring-2 focus:ring-brand-100"
-                  />
-                  <svg className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="11" cy="11" r="7" />
-                    <path d="m20 20-3.5-3.5" />
-                  </svg>
-                </label>
-              </form>
-              <Link href="/search" className={`${iconBtn} xl:hidden`} aria-label="بحث" title="بحث">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="m20 20-3.5-3.5" />
-                </svg>
+            <form action={logout}>
+              <SubmitButton className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-red-700" title="تسجيل الخروج" aria-label="تسجيل الخروج">
+                <LogOut className="h-5 w-5" />
+              </SubmitButton>
+            </form>
+          </div>
+        }
+        topbar={
+          <div className="flex flex-1 items-center justify-end gap-1 lg:justify-between">
+            {/* Global search (H6 recognition, H7 efficiency). Shortcut: "/" */}
+            <form action="/search" className="hidden w-full max-w-xl lg:block" role="search">
+              <label className="relative block">
+                <span className="sr-only">بحث</span>
+                <input
+                  id="global-search"
+                  name="q"
+                  placeholder="بحث في الشركات والمهام…  ( / )"
+                  className="w-full rounded-lg border border-slate-300 bg-slate-50 py-2 pe-3 ps-10 text-sm outline-none focus:border-brand-600 focus:bg-white focus:ring-2 focus:ring-brand-100"
+                />
+                <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              </label>
+            </form>
+            <div className="flex items-center gap-0.5 sm:gap-1">
+              <Link href="/search" className={`${iconBtn} lg:hidden`} aria-label="بحث" title="بحث">
+                <Search className="h-5 w-5" />
               </Link>
               <Link href="/notifications" className={iconBtn} aria-label={`التنبيهات (${unread} غير مقروءة)`} title="التنبيهات">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8" />
-                  <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-                </svg>
+                <Bell className="h-5 w-5" />
                 {unread > 0 && (
                   <span className="absolute -top-0.5 -left-0.5 min-w-5 rounded-full bg-red-600 px-1 text-center text-[11px] font-bold leading-5 text-white">
                     {unread > 99 ? '99+' : unread}
@@ -69,22 +90,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 )}
               </Link>
               <Link href="/help" className={iconBtn} aria-label="المساعدة" title="المساعدة ودليل الاستخدام ( ? )">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-current text-sm font-bold">؟</span>
+                <CircleHelp className="h-5 w-5" />
               </Link>
-              <Link href="/settings" className="hidden rounded-lg px-2 py-2 text-sm text-slate-600 hover:bg-slate-100 md:block" title="بياناتي والإعدادات">
-                {user.full_name || user.email}
-              </Link>
-              <form action={logout}>
-                <SubmitButton className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-sm text-slate-500 hover:bg-slate-100" title="تسجيل الخروج">
-                  خروج
-                </SubmitButton>
-              </form>
+              <ThemeToggle className={iconBtn} />
             </div>
-            <NavLinks isAdmin={user.role === 'admin'} />
           </div>
-        </header>
-        <main className="px-4 py-6 lg:px-8 print:p-0">{children}</main>
-      </div>
+        }
+      >
+        {children}
+      </AppShell>
       <Suspense>
         <FlashFromUrl />
       </Suspense>

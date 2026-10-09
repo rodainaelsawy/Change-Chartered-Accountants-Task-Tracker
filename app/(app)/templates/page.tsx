@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { LayoutTemplate } from 'lucide-react'
 import { requireSession } from '@/lib/auth'
 import { Crumbs, Card, Empty, PageHeader, btn } from '@/components/ui'
 import { query } from '@/lib/db'
@@ -29,7 +30,7 @@ export default async function TemplatesPage() {
       />
       <Card className="overflow-hidden">
         {rows.length === 0 ? (
-          <Empty>
+          <Empty icon={<LayoutTemplate className="h-7 w-7" />} action={{ href: '/templates/new', label: '+ إنشاء أول قالب' }}>
             لا توجد قوالب بعد. مثال: «تأسيس شركة جديدة» أو «الإقرارات الشهرية».
           </Empty>
         ) : (

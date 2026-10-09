@@ -3,6 +3,8 @@ import { OPEN_SQL } from '@/lib/labels'
 import { RememberFilters } from '@/components/remember-filters'
 import { rememberedFilters } from '@/lib/remember-filters'
 import { TaskList } from '@/components/task-list'
+import { WeeklyChart } from '@/components/weekly-chart'
+import { AlertTriangle, CalendarClock, CheckCircle2, Clock, Hourglass, Sun } from 'lucide-react'
 import { Card, PageHeader, StatCard, btn } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
 import { one, query } from '@/lib/db'
@@ -39,14 +41,32 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
        from tasks t where t.org_id = $1 ${mineSql('$5')}`,
       [org.id, today, weekEnd, startOfWeek(today), user.id],
     ),
-    // "Needs attention": overdue first, then everything due in the next 7 days (FR-6.2)
+    // "Needs attention": overdue first, then everything due in the next 7 days (FR-6.2); today's are shown separately.
     query<Task>(
-      `${TASK_SELECT} where t.org_id = $1 and t.status in ${OPEN} and t.deadline <= $2 ${mineSql('$3')}
+      `${TASK_SELECT} where t.org_id = $1 and t.status in ${OPEN} and t.deadline <= $2 and t.deadline <> $4 ${mineSql('$3')}
         order by t.deadline, t.priority desc limit 50`,
-      [org.id, weekEnd, user.id],
+      [org.id, weekEnd, user.id, today],
     ),
     one<{ n: number }>('select count(*)::int as n from companies where org_id = $1 and archived_at is null', [org.id]),
   ])
+  const dueToday = await query<Task>(
+    `${TASK_SELECT} where t.org_id = $1 and t.status in ${OPEN} and t.deadline = $2 ${mineSql('$3')}
+      order by t.priority desc, t.title`,
+    [org.id, today, user.id],
+  )
+  // Completed tasks per week (Saturday-start weeks), last 8 weeks, for the chart.
+  const firstWeek = addDays(startOfWeek(today), -7 * 7)
+  const doneDays = await query<{ d: string; n: number }>(
+    `select (t.completed_at at time zone $3)::date as d, count(*)::int as n
+       from tasks t where t.org_id = $1 and t.status = 'done' and t.completed_at >= $2::date - 1 ${mineSql('$4')}
+      group by 1`,
+    [org.id, firstWeek, org.timezone, user.id],
+  )
+  const weeks = Array.from({ length: 8 }, (_, i) => {
+    const start = addDays(firstWeek, i * 7)
+    const end = addDays(start, 7)
+    return { start, n: doneDays.filter((r) => r.d >= start && r.d < end).reduce((a, r) => a + r.n, 0) }
+  })
   // Tasks waiting for this user's review (followers; admins see all of them).
   const toReview = await query<Task>(
     `${TASK_SELECT} where t.org_id = $1 and t.status = 'review'
@@ -82,9 +102,12 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         title={`مرحبًا ${user.full_name.split(' ')[0] || ''}`}
         subtitle={`${formatWeekday(today)}، ${formatDate(today)}`}
         actions={
-          <Link href="/tasks/new" className={btn.primary}>
-            + مهمة جديدة
-          </Link>
+          // On phones the floating «مهمة جديدة» button replaces this one.
+          <span className="hidden lg:block">
+            <Link href="/tasks/new" className={btn.primary}>
+              + مهمة جديدة
+            </Link>
+          </span>
         }
       />
 
@@ -114,17 +137,19 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatCard label="متأخرة" value={s.overdue} href={`/tasks?due=overdue${q}`} tone="red" />
-        <StatCard label="موعدها اليوم" value={s.today} href={`/tasks?due=today${q}`} tone="amber" />
-        <StatCard label="خلال 7 أيام" value={s.week} href={`/tasks?due=week${q}`} tone="sky" />
-        <StatCard label="أُنجزت هذا الأسبوع" value={s.done_week} href={`/tasks?status=done&sort=created${q}`} tone="emerald" />
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <StatCard label="متأخرة" value={s.overdue} href={`/tasks?due=overdue${q}`} tone="red" icon={<AlertTriangle className="h-6 w-6" />} hint="تجاوزت موعد التسليم" />
+        <StatCard label="موعدها اليوم" value={s.today} href={`/tasks?due=today${q}`} tone="amber" icon={<Clock className="h-6 w-6" />} hint="يجب تسليمها اليوم" />
+        <StatCard label="خلال 7 أيام" value={s.week} href={`/tasks?due=week${q}`} tone="sky" icon={<CalendarClock className="h-6 w-6" />} hint="مواعيد الأسبوع القادم" />
+        <StatCard label="أُنجزت هذا الأسبوع" value={s.done_week} href={`/tasks?status=done&sort=created${q}`} tone="emerald" icon={<CheckCircle2 className="h-6 w-6" />} hint="منذ يوم السبت" />
       </div>
 
       {toReview.length > 0 && (
         <Card className="mt-6 overflow-hidden border-amber-200">
           <div className="flex items-center justify-between border-b border-amber-200 bg-amber-50 px-4 py-3">
-            <h2 className="font-semibold text-amber-900">بانتظار مراجعتك ({toReview.length})</h2>
+            <h2 className="flex items-center gap-2 font-semibold text-amber-900">
+              <Hourglass className="h-5 w-5" /> بانتظار مراجعتك ({toReview.length})
+            </h2>
             <Link href="/tasks?status=review" className="text-sm text-brand-700 hover:underline">
               عرض الكل
             </Link>
@@ -134,14 +159,38 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       )}
 
       <div className="mt-6 grid gap-6 xl:grid-cols-3">
-      <Card className="overflow-hidden xl:col-span-2">
-        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-          <h2 className="font-semibold">تحتاج إلى متابعة</h2>
-          <Link href={admin && mine ? '/tasks?assignee=me&status=open' : '/tasks?status=open'} className="text-sm text-brand-700 hover:underline">
-            {mine ? 'كل مهامي المفتوحة' : 'كل المهام المفتوحة'} ({s.open})
-          </Link>
-        </div>
-        <TaskList viewer={user} tasks={attention} today={today} empty="لا توجد مهام متأخرة أو مستحقة خلال الأيام السبعة القادمة 🎉" />
+      <div className="space-y-6 xl:col-span-2">
+        <Card className="overflow-hidden">
+          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+            <h2 className="flex items-center gap-2 font-semibold">
+              <Sun className="h-5 w-5 text-amber-500" /> مهام اليوم
+            </h2>
+            <span className="text-sm text-slate-500">{formatWeekday(today)}</span>
+          </div>
+          <TaskList viewer={user} tasks={dueToday} today={today} empty="لا توجد مهام موعدها اليوم 🎉" />
+        </Card>
+
+        <Card className="overflow-hidden">
+          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+            <h2 className="font-semibold">تحتاج إلى متابعة</h2>
+            <Link href={admin && mine ? '/tasks?assignee=me&status=open' : '/tasks?status=open'} className="text-sm text-brand-700 hover:underline">
+              {mine ? 'كل مهامي المفتوحة' : 'كل المهام المفتوحة'} ({s.open})
+            </Link>
+          </div>
+          <TaskList
+            viewer={user}
+            tasks={attention}
+            today={today}
+            empty="لا توجد مهام متأخرة أو مستحقة خلال الأيام السبعة القادمة"
+            emptyAction={{ href: '/tasks/new', label: '+ مهمة جديدة' }}
+          />
+        </Card>
+      </div>
+
+      <div className="space-y-6">
+      <Card className="p-4">
+        <h2 className="mb-4 font-semibold">المهام المنجزة أسبوعيًا</h2>
+        <WeeklyChart weeks={weeks} />
       </Card>
 
       {/* Recent activity across the office (H1: keep users informed about what is going on) */}
@@ -167,6 +216,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           </ul>
         )}
       </Card>
+      </div>
       </div>
     </>
   )

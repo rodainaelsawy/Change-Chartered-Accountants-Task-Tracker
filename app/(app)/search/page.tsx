@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { SearchX } from 'lucide-react'
 import { BackButton } from '@/components/back-button'
 import { TaskList } from '@/components/task-list'
 import { Card, Empty, PageHeader, inputCls, btn } from '@/components/ui'
@@ -49,7 +50,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           <Card className="h-fit overflow-hidden">
             <h2 className="border-b border-slate-200 px-4 py-3 font-semibold">الشركات ({companies.length})</h2>
             {companies.length === 0 ? (
-              <Empty>لا توجد شركات مطابقة</Empty>
+              <Empty icon={<SearchX className="h-7 w-7" />}>لا توجد شركات مطابقة</Empty>
             ) : (
               <ul className="divide-y divide-slate-100">
                 {companies.map((c) => (

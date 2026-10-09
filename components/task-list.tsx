@@ -11,8 +11,10 @@ export function TaskList({
   today,
   showCompany = true,
   empty = 'لا توجد مهام',
+  emptyAction,
   viewer,
 }: {
+  emptyAction?: { href: string; label: string }
   /** The signed-in user: decides what the quick ✓ button may do on each task. */
   viewer: Pick<User, 'id' | 'role'>
   tasks: Task[]
@@ -20,7 +22,7 @@ export function TaskList({
   showCompany?: boolean
   empty?: string
 }) {
-  if (!tasks.length) return <Empty>{empty}</Empty>
+  if (!tasks.length) return <Empty action={emptyAction}>{empty}</Empty>
   return (
     <ul className="divide-y divide-slate-100">
       {tasks.map((t) => {
@@ -30,7 +32,10 @@ export function TaskList({
         const mine = Boolean(t.assignees?.some((a) => a.id === viewer.id)) || t.created_by === viewer.id
         const follows = Boolean(t.followers?.some((f) => f.id === viewer.id))
         return (
-          <li key={t.id} className={`flex items-center gap-3 px-4 py-3 hover:bg-slate-50 ${urgencyBorder[u]}`}>
+          <li
+            key={t.id}
+            className={`flex items-center gap-3 px-4 py-3 ${urgencyBorder[u]} ${u === 'overdue' ? 'bg-red-50/70 hover:bg-red-50' : 'hover:bg-slate-50'}`}
+          >
             <TaskDoneToggle
               id={t.id}
               title={t.title}
@@ -47,7 +52,10 @@ export function TaskList({
               </Link>
               <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
                 {showCompany && (
-                  <Link href={`/companies/${t.company_id}`} className="hover:text-brand-700 hover:underline">
+                  <Link
+                    href={`/companies/${t.company_id}`}
+                    className="rounded-md bg-slate-100 px-2 py-0.5 font-medium text-slate-600 hover:bg-brand-50 hover:text-brand-700"
+                  >
                     {t.company_name}
                   </Link>
                 )}

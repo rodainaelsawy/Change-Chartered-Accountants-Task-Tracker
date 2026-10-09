@@ -1,4 +1,9 @@
 import type { Metadata, Viewport } from 'next'
+// Self-hosted Arabic font (no request to Google at runtime).
+import '@fontsource/ibm-plex-sans-arabic/400.css'
+import '@fontsource/ibm-plex-sans-arabic/500.css'
+import '@fontsource/ibm-plex-sans-arabic/600.css'
+import '@fontsource/ibm-plex-sans-arabic/700.css'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -6,19 +11,16 @@ export const metadata: Metadata = {
   description: 'متابعة مهام الشركات ومواعيد التسليم',
 }
 
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#0f766e' }
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#12416b' }
+
+// Applies the saved light/dark choice before the first paint (no flash). See components/theme-toggle.tsx.
+const themeScript = `try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}`
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ar" dir="rtl">
+    <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-screen font-sans antialiased">{children}</body>
     </html>

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { RememberFilters } from '@/components/remember-filters'
 import { rememberedFilters } from '@/lib/remember-filters'
 import { TaskList } from '@/components/task-list'
+import { CollapsibleFilters } from '@/components/collapsible-filters'
 import { TaskBoard } from '@/components/task-board'
 import { SavedFilters } from '@/components/saved-filters'
 import { query } from '@/lib/db'
@@ -70,7 +71,8 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
       </div>
 
       {/* Plain GET form: filters live in the URL, so a filtered view can be bookmarked or shared (FR-7.1, FR-7.2) */}
-      <Card className="mb-4 p-4 print:hidden">
+      <CollapsibleFilters active={[f.q, f.company, f.assignee, f.priority, f.due, f.status !== 'all' ? f.status : ''].filter(Boolean).length}>
+      <Card className="p-4">
         <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
           {board && <input type="hidden" name="view" value="board" />}
           <input name="q" defaultValue={f.q} placeholder="بحث في المهام والشركات…" className={`${inputCls} lg:col-span-2`} />
@@ -151,6 +153,7 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
           </div>
         </form>
       </Card>
+      </CollapsibleFilters>
 
       <RememberFilters page="tasks" qs={current} reset={reset} />
       <SavedFilters items={saved} current={current} />
@@ -158,7 +161,8 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
         <TaskBoard tasks={tasks} today={today} viewer={user} />
       ) : (
         <Card className="overflow-hidden">
-          <TaskList viewer={user} tasks={tasks} today={today} empty={filtered ? 'لا توجد مهام مطابقة' : 'لا توجد مهام بعد'} />
+          <TaskList viewer={user} tasks={tasks} today={today} empty={filtered ? 'لا توجد مهام مطابقة لهذه الفلاتر' : 'لا توجد مهام بعد'}
+            emptyAction={filtered ? { href: '/tasks?reset=1', label: 'مسح الفلاتر' } : { href: '/tasks/new', label: '+ إضافة أول مهمة' }} />
         </Card>
       )}
     </>

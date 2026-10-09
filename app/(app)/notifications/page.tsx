@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { BellOff } from 'lucide-react'
 import { BackButton } from '@/components/back-button'
 import { revalidatePath } from 'next/cache'
 import { SubmitButton } from '@/components/submit-button'
@@ -76,7 +77,7 @@ export default async function NotificationsPage() {
       />
       <Card className="overflow-hidden">
         {rows.length === 0 ? (
-          <Empty>لا توجد تنبيهات خلال آخر 30 يومًا</Empty>
+          <Empty icon={<BellOff className="h-7 w-7" />}>لا توجد تنبيهات خلال آخر 30 يومًا. ستظهر هنا تذكيرات المواعيد والمهام المسندة إليك.</Empty>
         ) : (
           <ul className="divide-y divide-slate-100">
             {rows.map((n) => (

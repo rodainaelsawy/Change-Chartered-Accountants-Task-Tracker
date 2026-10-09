@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Building2 } from 'lucide-react'
 import { canManage, visibleTo } from '@/lib/permissions'
 import { OPEN_SQL } from '@/lib/labels'
 import { RememberFilters } from '@/components/remember-filters'
@@ -77,7 +78,12 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
       </Card>
       <Card className="overflow-hidden">
         {rows.length === 0 ? (
-          <Empty>{q ? 'لا توجد شركات مطابقة' : archived ? 'لا توجد شركات مؤرشفة' : 'لم تتم إضافة شركات بعد'}</Empty>
+          <Empty
+            icon={<Building2 className="h-7 w-7" />}
+            action={!q && !archived && canManage(user) ? { href: '/companies/new', label: '+ إضافة أول شركة' } : undefined}
+          >
+            {q ? 'لا توجد شركات مطابقة' : archived ? 'لا توجد شركات مؤرشفة' : 'لم تتم إضافة شركات بعد. أضفها يدويًا أو استوردها من ملف Excel.'}
+          </Empty>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

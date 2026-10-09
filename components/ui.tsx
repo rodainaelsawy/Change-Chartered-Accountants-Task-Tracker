@@ -123,8 +123,34 @@ export const urgencyBorder = {
   closed: 'border-r-4 border-r-emerald-400',
 }
 
-export function Empty({ children }: { children: React.ReactNode }) {
-  return <div className="px-6 py-12 text-center text-sm text-slate-500">{children}</div>
+/** Empty state: icon + message + optional next step (H6 / H10: tell people what they can do next). */
+export function Empty({
+  children,
+  icon,
+  action,
+}: {
+  children: React.ReactNode
+  icon?: React.ReactNode
+  action?: { href: string; label: string }
+}) {
+  return (
+    <div className="flex flex-col items-center px-6 py-12 text-center">
+      <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400" aria-hidden="true">
+        {icon ?? (
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 12h-6l-2 3h-4l-2-3H2" />
+            <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+          </svg>
+        )}
+      </div>
+      <div className="max-w-md text-sm text-slate-500">{children}</div>
+      {action && (
+        <Link href={action.href} className={`${btn.primary} mt-4`}>
+          {action.label}
+        </Link>
+      )}
+    </div>
+  )
 }
 
 export function Alert({ kind = 'error', children }: { kind?: 'error' | 'success' | 'info'; children: React.ReactNode }) {
@@ -136,27 +162,42 @@ export function Alert({ kind = 'error', children }: { kind?: 'error' | 'success'
   return <div className={`rounded-lg border px-4 py-3 text-sm ${cls}`}>{children}</div>
 }
 
+/** Clickable number card on the dashboard: icon, label, value and a one-line hint. */
 export function StatCard({
   label,
   value,
   href,
   tone,
+  icon,
+  hint,
 }: {
   label: string
   value: number
   href: string
   tone: 'red' | 'amber' | 'sky' | 'emerald'
+  icon?: React.ReactNode
+  hint?: string
 }) {
   const tones = {
-    red: 'text-red-700 bg-red-50',
-    amber: 'text-amber-700 bg-amber-50',
-    sky: 'text-sky-700 bg-sky-50',
-    emerald: 'text-emerald-700 bg-emerald-50',
-  }
+    red: { icon: 'bg-red-50 text-red-600', value: 'text-red-700', ring: 'hover:border-red-300' },
+    amber: { icon: 'bg-amber-50 text-amber-600', value: 'text-amber-700', ring: 'hover:border-amber-300' },
+    sky: { icon: 'bg-sky-50 text-sky-600', value: 'text-sky-700', ring: 'hover:border-sky-300' },
+    emerald: { icon: 'bg-emerald-50 text-emerald-600', value: 'text-emerald-700', ring: 'hover:border-emerald-300' },
+  }[tone]
   return (
-    <Link href={href} className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
-      <div className="text-sm text-slate-500">{label}</div>
-      <div className={`mt-2 inline-block rounded-lg px-3 py-1 text-3xl font-bold tabular-nums ${tones[tone]}`}>{value}</div>
+    <Link
+      href={href}
+      className={`group flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${tones.ring}`}
+    >
+      {icon && <span className={`hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl sm:flex ${tones.icon}`}>{icon}</span>}
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium text-slate-600">{label}</span>
+        <span className={`block text-3xl font-bold tabular-nums leading-tight ${value ? tones.value : 'text-slate-400'}`}>{value}</span>
+        {hint && <span className="mt-0.5 hidden text-xs text-slate-400 sm:block">{hint}</span>}
+      </span>
+      <span className="hidden self-center text-slate-300 transition group-hover:text-slate-500 sm:block" aria-hidden="true">
+        ←
+      </span>
     </Link>
   )
 }

@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { requireSession } from '@/lib/auth'
-import { canManage } from '@/lib/permissions'
 import { notFound } from 'next/navigation'
 import { applyTemplate, deleteTemplate } from '@/app/actions/templates'
 import { ActionForm, ConfirmButton } from '@/components/action-form'
@@ -81,8 +80,6 @@ export default async function TemplatePage({
         </Card>
       </div>
 
-      {canManage(user) && (
-      <>
       <Card className="mt-6 p-5">
         <details open={Boolean(sp.edit)}>
           <summary className="cursor-pointer font-semibold">تعديل القالب</summary>
@@ -96,8 +93,6 @@ export default async function TemplatePage({
           حذف القالب
         </ConfirmButton>
       </div>
-      </>
-      )}
     </>
   )
 }

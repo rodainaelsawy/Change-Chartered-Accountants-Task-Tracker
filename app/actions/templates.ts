@@ -1,6 +1,5 @@
 'use server'
 
-import { requireManager } from '@/lib/permissions'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { requireSession, type Session } from '@/lib/auth'
@@ -41,7 +40,7 @@ async function afterCreate(org: Session['org'], userId: string, ids: string[], a
 // ---------- Templates ----------
 
 export async function saveTemplate(_: FormState, fd: FormData): Promise<FormState> {
-  const { user, org } = await requireManager()
+  const { user, org } = await requireSession()
   const id = str(fd, 'id')
   const name = str(fd, 'name')
   const description = str(fd, 'description') || null
@@ -98,7 +97,7 @@ export async function saveTemplate(_: FormState, fd: FormData): Promise<FormStat
 }
 
 export async function deleteTemplate(id: string) {
-  const { org } = await requireManager()
+  const { org } = await requireSession()
   await query('delete from task_templates where id = $1 and org_id = $2', [id, org.id])
   revalidatePath('/templates')
   redirect('/templates?msg=template_deleted')

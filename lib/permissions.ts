@@ -8,9 +8,9 @@ import type { TaskStatus, User } from './types'
  Roles (users.role):
   - admin  «مدير»: everything (all tasks, companies, reports, workload, team).
   - member «مشرف»: like an admin, but only sees the tasks they are assigned to / follow / created.
-                   Full company management (add / edit / delete when no open tasks, files, import, templates).
+                   Full company management (add / edit / delete when no open tasks, files, import).
   - staff  «عضو» : only their tasks (assigned / followed / created); can create and edit them.
-                   Companies are read-only (files: view/download only).
+                   Companies are read-only (files: view/download only). Otherwise the same as مشرف (templates too).
  ('follower' is a retired role value; such users were moved to 'staff'.)
  Per task, anyone of any role can be an assignee (task_assignees) or a follower (task_followers).
  Followers review: on a task with followers, «منجزة» by a non-follower becomes «جاهزة للمراجعة».
@@ -18,10 +18,10 @@ import type { TaskStatus, User } from './types'
 */
 
 export const isAdmin = (u: Pick<User, 'role'>) => u.role === 'admin'
-/** Can add/edit/delete companies and their files, import data and manage templates (admin + مشرف). */
+/** Can add/edit/delete companies and their files and import companies (admin + مشرف). */
 export const canManage = (u: Pick<User, 'role'>) => u.role === 'admin' || u.role === 'member'
 
-/** Session of a user who may manage companies, files, import and templates. */
+/** Session of a user who may manage companies, their files and the import. */
 export async function requireManager(): Promise<Session> {
   const s = await requireSession()
   if (!canManage(s.user)) redirect('/companies')

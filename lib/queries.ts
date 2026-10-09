@@ -2,7 +2,8 @@ import 'server-only'
 import { query } from './db'
 import { addDays } from './dates'
 import { OPEN_STATUSES, PRIORITIES, STATUSES } from './labels'
-import type { Task } from './types'
+import { visibleTo } from './permissions'
+import type { Task, User, UserRole } from './types'
 
 export type TaskFilters = {
   q?: string
@@ -24,9 +25,11 @@ const SORTS: Record<string, string> = {
 
 export const TASK_SELECT = `
   select t.id, t.company_id, c.name as company_name, t.title, t.description, t.deadline, t.priority, t.status,
-         t.reminder_days, t.created_at, t.updated_at, t.completed_at, t.series_id,
+         t.reminder_days, t.created_at, t.updated_at, t.completed_at, t.series_id, t.created_by,
          coalesce((select json_agg(json_build_object('id', u.id, 'name', u.full_name) order by u.full_name)
                      from task_assignees a join users u on u.id = a.user_id where a.task_id = t.id), '[]') as assignees,
+         coalesce((select json_agg(json_build_object('id', u.id, 'name', u.full_name) order by u.full_name)
+                     from task_followers f join users u on u.id = f.user_id where f.task_id = t.id), '[]') as followers,
          (select count(*)::int from task_checklist_items i where i.task_id = t.id) as checklist_total,
          (select count(*)::int from task_checklist_items i where i.task_id = t.id and i.done) as checklist_done
     from tasks t join companies c on c.id = t.company_id`
@@ -35,13 +38,21 @@ export const TASK_SELECT = `
 export const assignedTo = (param: string) =>
   `exists (select 1 from task_assignees ax where ax.task_id = t.id and ax.user_id = ${param})`
 
-export async function listTasks(orgId: string, f: TaskFilters, today: string, limit = 500): Promise<Task[]> {
+/** Tasks of the org matching the filters, limited to those `viewer` may see. */
+export async function listTasks(
+  orgId: string,
+  f: TaskFilters,
+  today: string,
+  viewer: Pick<User, 'id' | 'role'>,
+  limit = 500,
+): Promise<Task[]> {
   const where: string[] = ['t.org_id = $1']
   const params: unknown[] = [orgId]
   const p = (v: unknown) => {
     params.push(v)
     return `$${params.length}`
   }
+  where.push(visibleTo(viewer, p(viewer.id)))
 
   const status = f.status || 'all'
   if (status === 'open') where.push(`t.status in ('${OPEN_STATUSES.join("','")}')`)
@@ -74,8 +85,8 @@ export async function companyOptions(orgId: string, includeId?: string) {
 }
 
 export async function teamMembers(orgId: string) {
-  return query<{ id: string; full_name: string; active: boolean }>(
-    'select id, full_name, active from users where org_id = $1 order by active desc, full_name',
+  return query<{ id: string; full_name: string; active: boolean; role: UserRole }>(
+    'select id, full_name, active, role from users where org_id = $1 order by active desc, full_name',
     [orgId],
   )
 }

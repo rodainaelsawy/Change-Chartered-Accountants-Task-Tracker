@@ -3,7 +3,7 @@ import { RememberFilters } from '@/components/remember-filters'
 import { rememberedFilters } from '@/lib/remember-filters'
 import { PrintButton } from '@/components/print-button'
 import { Card, Empty, PageHeader, btn, inputCls } from '@/components/ui'
-import { requireSession } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth'
 import { formatDate, todayIn } from '@/lib/dates'
 import { companyOptions } from '@/lib/queries'
 import { presets, reportRange } from '@/lib/report-range'
@@ -31,7 +31,7 @@ export default async function ReportsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  const { org } = await requireSession()
+  const { org } = await requireAdmin()
   const remembered = await rememberedFilters('reports', await searchParams, ['from', 'to', 'company', 'done'])
   const sp = { from: remembered.get('from'), to: remembered.get('to'), company: remembered.get('company'), done: remembered.get('done') }
   const today = todayIn(org.timezone)

@@ -1,7 +1,16 @@
-export type TaskStatus = 'not_started' | 'in_progress' | 'on_hold' | 'done' | 'cancelled'
+export type TaskStatus = 'not_started' | 'in_progress' | 'on_hold' | 'review' | 'done' | 'cancelled'
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
-export type UserRole = 'admin' | 'member'
-export type NotifKind = 'due_soon' | 'due_today' | 'overdue' | 'assigned'
+/** 'member' = Assignee (works on own tasks), 'follower' = reviews the tasks they follow. */
+export type UserRole = 'admin' | 'member' | 'follower'
+export type NotifKind =
+  | 'due_soon'
+  | 'due_today'
+  | 'overdue'
+  | 'assigned'
+  | 'followed'
+  | 'review_requested'
+  | 'review_returned'
+  | 'review_approved'
 export type RecurrenceFreq = 'weekly' | 'monthly' | 'quarterly' | 'yearly'
 
 export interface Org {
@@ -64,8 +73,10 @@ export interface Task {
   created_by_name?: string | null
   updated_by_name?: string | null
   series_id?: string | null
+  created_by?: string | null
   /** Filled by list queries */
   assignees?: { id: string; name: string }[]
+  followers?: { id: string; name: string }[]
   checklist_total?: number
   checklist_done?: number
 }

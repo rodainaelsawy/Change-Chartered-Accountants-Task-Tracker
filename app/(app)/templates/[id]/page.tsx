@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { requireManager } from '@/lib/permissions'
 import { notFound } from 'next/navigation'
 import { applyTemplate, deleteTemplate } from '@/app/actions/templates'
 import { ActionForm, ConfirmButton } from '@/components/action-form'
@@ -7,7 +8,6 @@ import { CompanyPicker } from '@/components/company-picker'
 import type { TemplateItem } from '@/components/rows-editor'
 import { TemplateForm } from '@/components/template-form'
 import { Crumbs, Card, Field, PageHeader, btn, inputCls } from '@/components/ui'
-import { requireSession } from '@/lib/auth'
 import { one, query } from '@/lib/db'
 import { todayIn } from '@/lib/dates'
 import { FREQ_LABEL, PRIORITY_LABEL, tasksCount } from '@/lib/labels'
@@ -23,7 +23,7 @@ export default async function TemplatePage({
   params: Promise<{ id: string }>
   searchParams: Promise<{ edit?: string }>
 }) {
-  const { org, user } = await requireSession()
+  const { org, user } = await requireManager()
   const { id } = await params
   const sp = await searchParams
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()

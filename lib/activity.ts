@@ -21,6 +21,10 @@ export type ActivityAction =
   | 'description'
   | 'reminder_days'
   | 'assignees'
+  | 'followers'
+  | 'review_sent'
+  | 'review_approved'
+  | 'review_returned'
   | 'checklist_add'
   | 'checklist_done'
   | 'checklist_undone'
@@ -72,6 +76,18 @@ export function describeActivity(action: string, d: Details): string {
       if (Array.isArray(d.removed) && d.removed.length) parts.push(`أزال ${list(d.removed)} من المسؤولين`)
       return parts.join(' و') || 'عدّل المسؤولين'
     }
+    case 'followers': {
+      const parts = []
+      if (Array.isArray(d.added) && d.added.length) parts.push(`أضاف ${list(d.added)} كمتابع`)
+      if (Array.isArray(d.removed) && d.removed.length) parts.push(`أزال ${list(d.removed)} من المتابعين`)
+      return parts.join(' و') || 'عدّل المتابعين'
+    }
+    case 'review_sent':
+      return 'أرسل المهمة للمراجعة'
+    case 'review_approved':
+      return 'اعتمد المهمة (منجزة)'
+    case 'review_returned':
+      return `أعاد المهمة للتعديل${d.comment ? `: ${q(d.comment)}` : ''}`
     case 'checklist_add':
       return `أضاف خطوة ${q(d.title)}`
     case 'checklist_done':

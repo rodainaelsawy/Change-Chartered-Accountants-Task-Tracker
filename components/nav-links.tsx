@@ -4,13 +4,19 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
+  // Reports and the team workload are for admins only.
   const path = usePathname()
   const links = [
     { href: '/', label: 'لوحة المتابعة', match: (p: string) => p === '/' },
     { href: '/tasks', label: 'المهام', match: (p: string) => p.startsWith('/tasks') || p.startsWith('/templates') },
     { href: '/calendar', label: 'التقويم', match: (p: string) => p.startsWith('/calendar') },
     { href: '/companies', label: 'الشركات', match: (p: string) => p.startsWith('/companies') || p.startsWith('/import') },
-    { href: '/reports', label: 'التقارير', match: (p: string) => p.startsWith('/reports') },
+    ...(isAdmin
+      ? [
+          { href: '/workload', label: 'توزيع العمل', match: (p: string) => p.startsWith('/workload') },
+          { href: '/reports', label: 'التقارير', match: (p: string) => p.startsWith('/reports') },
+        ]
+      : []),
     { href: '/settings', label: isAdmin ? 'الإعدادات والفريق' : 'الإعدادات', match: (p: string) => p.startsWith('/settings') },
   ]
   return (

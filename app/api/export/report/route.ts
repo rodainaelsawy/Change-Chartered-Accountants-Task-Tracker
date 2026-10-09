@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic'
 export async function GET(req: Request) {
   const session = await getSession()
   if (!session) return new Response('غير مصرح', { status: 401 })
+  if (session.user.role !== 'admin') return new Response('للمدير فقط', { status: 403 })
   const { org } = session
   const sp = new URL(req.url).searchParams
   const today = todayIn(org.timezone)

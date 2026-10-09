@@ -1,4 +1,5 @@
 import 'server-only'
+import { OPEN_SQL } from '@/lib/labels'
 import { query } from './db'
 import type { Org, TaskStatus } from './types'
 
@@ -30,14 +31,14 @@ export async function companyReport(org: Pick<Org, 'id' | 'timezone'>, from: str
             count(t.id) filter (where t.status = 'done')::int as done,
             count(t.id) filter (where t.status = 'done' and (t.completed_at at time zone $4)::date <= t.deadline)::int as done_on_time,
             count(t.id) filter (where t.status = 'done' and (t.completed_at at time zone $4)::date > t.deadline)::int as done_late,
-            count(t.id) filter (where t.status in ('not_started', 'in_progress', 'on_hold'))::int as open,
-            count(t.id) filter (where t.status in ('not_started', 'in_progress', 'on_hold') and t.deadline < $5)::int as overdue,
+            count(t.id) filter (where t.status in ${OPEN_SQL})::int as open,
+            count(t.id) filter (where t.status in ${OPEN_SQL} and t.deadline < $5)::int as overdue,
             count(t.id) filter (where t.status = 'cancelled')::int as cancelled
        from companies c
        join tasks t on t.company_id = c.id and t.deadline between $2 and $3
       where c.org_id = $1 and ($6::uuid is null or c.id = $6)
       group by c.id
-      order by count(t.id) filter (where t.status in ('not_started', 'in_progress', 'on_hold') and t.deadline < $5) desc, c.name`,
+      order by count(t.id) filter (where t.status in ${OPEN_SQL} and t.deadline < $5) desc, c.name`,
     [org.id, from, to, org.timezone, today, companyId ?? null],
   )
   return rows.map((r) => ({ ...r, on_time_rate: rate(r.done_on_time, r.done + r.overdue) }))

@@ -3,7 +3,7 @@ import { FREQ_LABEL, PRIORITIES, PRIORITY_LABEL, STATUSES, STATUS_LABEL } from '
 import type { Task } from '@/lib/types'
 import { ActionForm } from './action-form'
 import { CompanyCombobox, DeadlineInput } from './form-inputs'
-import { ASSIGNEES_CHECK, AssigneePicker, type TeamMember } from './assignee-picker'
+import { ASSIGNEES_CHECK, AssigneePicker, FollowerPicker, type TeamMember } from './assignee-picker'
 import { Field, btn, inputCls } from './ui'
 
 
@@ -12,6 +12,7 @@ export function TaskForm({
   companies,
   team,
   assigneeIds,
+  followerIds = [],
   defaultCompanyId,
   defaultDeadline,
   orgReminderDays,
@@ -25,6 +26,7 @@ export function TaskForm({
   team: TeamMember[]
   /** Selected assignees (for a new task: the current user). */
   assigneeIds: string[]
+  followerIds?: string[]
   defaultCompanyId?: string
   defaultDeadline: string
   orgReminderDays: number
@@ -65,6 +67,7 @@ export function TaskForm({
       </Field>
 
       <AssigneePicker team={team} selected={assigneeIds} className="sm:col-span-2" />
+      <FollowerPicker team={team} selected={followerIds} className="sm:col-span-2" />
 
       <Field label="الأولوية">
         <select name="priority" required defaultValue={task?.priority ?? 'medium'} className={inputCls}>

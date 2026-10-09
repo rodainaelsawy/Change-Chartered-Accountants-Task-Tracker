@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { canManage, isAdmin, visibleTo } from '@/lib/permissions'
 import { notFound } from 'next/navigation'
 import { deleteCompany, setCompanyArchived } from '@/app/actions/companies'
 import { ConfirmButton } from '@/components/action-form'
@@ -9,7 +10,7 @@ import { Tabs } from '@/components/tabs'
 import { TaskList } from '@/components/task-list'
 import { Crumbs, Alert, Card, PageHeader, btn } from '@/components/ui'
 import { ATTACHMENT_KINDS, ATTACHMENT_LABEL } from '@/lib/attachments'
-import { tasksCount } from '@/lib/labels'
+import { isOpen, tasksCount } from '@/lib/labels'
 import { requireSession } from '@/lib/auth'
 import { one, query } from '@/lib/db'
 import { formatDateTime, todayIn } from '@/lib/dates'
@@ -39,7 +40,8 @@ export default async function CompanyPage({
   params: Promise<{ id: string }>
   searchParams: Promise<{ closed?: string; tab?: string; added?: string }>
 }) {
-  const { org } = await requireSession()
+  const { org, user } = await requireSession()
+  const manage = canManage(user)
   const { id } = await params
   const { closed, tab, added } = await searchParams
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
@@ -48,7 +50,7 @@ export default async function CompanyPage({
 
   const today = todayIn(org.timezone)
   const [tasks, attachments] = await Promise.all([
-    query<Task>(`${TASK_SELECT} where t.company_id = $1 order by t.deadline`, [id]),
+    query<Task>(`${TASK_SELECT} where t.company_id = $1 and ${visibleTo(user, '$2')} order by t.deadline`, [id, user.id]),
     query<Attachment>(
       `select a.id, a.kind, a.file_name, a.size_bytes, a.created_at, u.full_name as uploaded_by_name
          from company_attachments a left join users u on u.id = a.uploaded_by
@@ -56,7 +58,7 @@ export default async function CompanyPage({
       [id],
     ),
   ])
-  const open = tasks.filter((t) => ['not_started', 'in_progress', 'on_hold'].includes(t.status))
+  const open = tasks.filter((t) => isOpen(t.status))
   const done = tasks.filter((t) => !open.includes(t))
   const overdue = open.filter((t) => t.deadline < today).length
   const hasTax = Boolean(company.tax_email || company.tax_username || company.tax_password_enc)
@@ -93,16 +95,20 @@ export default async function CompanyPage({
           ['كلمة المرور', company.tax_password_enc && <TaxPasswordField companyId={company.id} />],
         ]}
       />
-      <Link href={`/companies/${company.id}/edit?tab=tax`} className="inline-block text-sm text-brand-700 hover:underline">
-        تعديل البيانات الضريبية
-      </Link>
+      {manage && (
+        <Link href={`/companies/${company.id}/edit?tab=tax`} className="inline-block text-sm text-brand-700 hover:underline">
+          تعديل البيانات الضريبية
+        </Link>
+      )}
     </div>
   ) : (
     <div className="space-y-3 text-sm text-slate-500">
       <p>لم تُضف البيانات الضريبية لهذه الشركة بعد.</p>
-      <Link href={`/companies/${company.id}/edit?tab=tax`} className={btn.secondary}>
-        إضافة البيانات الضريبية
-      </Link>
+      {manage && (
+        <Link href={`/companies/${company.id}/edit?tab=tax`} className={btn.secondary}>
+          إضافة البيانات الضريبية
+        </Link>
+      )}
     </div>
   )
 
@@ -113,6 +119,7 @@ export default async function CompanyPage({
         title={company.name}
         subtitle={`${open.length} مفتوحة · ${overdue} متأخرة · ${done.filter((t) => t.status === 'done').length} منجزة`}
         actions={
+          manage && (
           <>
             <Link href={`/tasks/new?company=${company.id}`} className={btn.primary}>
               + مهمة لهذه الشركة
@@ -124,6 +131,7 @@ export default async function CompanyPage({
               تعديل
             </Link>
           </>
+          )
         }
       />
 
@@ -142,7 +150,7 @@ export default async function CompanyPage({
         <div className="space-y-6 lg:col-span-2">
           <Card className="overflow-hidden">
             <h2 className="border-b border-slate-200 px-4 py-3 font-semibold">المهام المفتوحة ({open.length})</h2>
-            <TaskList tasks={open} today={today} showCompany={false} empty="لا توجد مهام مفتوحة لهذه الشركة" />
+            <TaskList viewer={user} tasks={open} today={today} showCompany={false} empty="لا توجد مهام مفتوحة لهذه الشركة" />
           </Card>
           {done.length > 0 && (
             <Card className="overflow-hidden">
@@ -152,7 +160,7 @@ export default async function CompanyPage({
                   {closed ? 'إخفاء' : 'عرض'}
                 </Link>
               </div>
-              {closed && <TaskList tasks={[...done].reverse()} today={today} showCompany={false} />}
+              {closed && <TaskList viewer={user} tasks={[...done].reverse()} today={today} showCompany={false} />}
             </Card>
           )}
 
@@ -169,6 +177,7 @@ export default async function CompanyPage({
                     files={filesOf(kind)}
                     blobMode={blobEnabled()}
                     prefix={companyPrefix(org.id, company.id)}
+                    readOnly={!manage}
                   />
                 </div>
               ))}
@@ -186,10 +195,12 @@ export default async function CompanyPage({
               ]}
             />
           </Card>
+          {manage && (
           <Card className="space-y-2 p-5">
             <form action={setCompanyArchived.bind(null, company.id, !company.archived_at)}>
               <SubmitButton className={`${btn.secondary} w-full`}>{company.archived_at ? 'إلغاء الأرشفة' : 'أرشفة الشركة'}</SubmitButton>
             </form>
+            {isAdmin(user) && (
             <ConfirmButton
               action={deleteCompany.bind(null, company.id)}
               confirmText={`سيتم حذف الشركة "${company.name}" وجميع مهامها (${tasks.length}) ومرفقاتها (${attachments.length}) نهائيًا. هل أنت متأكد؟`}
@@ -197,7 +208,9 @@ export default async function CompanyPage({
             >
               حذف الشركة
             </ConfirmButton>
+            )}
           </Card>
+          )}
         </div>
       </div>
     </>

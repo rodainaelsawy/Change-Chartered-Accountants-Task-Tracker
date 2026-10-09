@@ -19,6 +19,7 @@ const err = (message: string, status = 400) => Response.json({ error: message },
 export async function POST(req: Request) {
   const session = await getSession()
   if (!session) return err('غير مصرح', 401)
+  if (session.user.role === 'follower') return err('ليست لديك صلاحية رفع الملفات', 403)
   const { org, user } = session
 
   if (blobEnabled()) {

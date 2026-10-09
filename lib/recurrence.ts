@@ -66,6 +66,11 @@ export async function ensureNextOccurrences(org: Pick<Org, 'id' | 'timezone'>, s
         [r.last_id, newId],
       )
       await c.query(
+        `insert into task_followers (task_id, user_id)
+         select $2, f.user_id from task_followers f join users u on u.id = f.user_id and u.active where f.task_id = $1`,
+        [r.last_id, newId],
+      )
+      await c.query(
         `insert into task_checklist_items (task_id, title, position)
          select $2, title, position from task_checklist_items where task_id = $1`,
         [r.last_id, newId],

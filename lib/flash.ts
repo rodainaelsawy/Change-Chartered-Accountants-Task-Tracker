@@ -3,6 +3,8 @@ export const FLASH = {
   task_created: 'تمت إضافة المهمة',
   task_saved: 'تم حفظ التعديلات',
   task_deleted: 'تم حذف المهمة',
+  task_sent_review: 'تم إرسال المهمة للمراجعة — سيصل تنبيه للمتابعين',
+  task_approved: 'تم اعتماد المهمة كمنجزة',
   task_copied: 'تم إنشاء نسخة من المهمة — عدّل العنوان والموعد ثم احفظ',
   company_created: 'تمت إضافة الشركة — يمكنك الآن رفع مرفقاتها',
   company_saved: 'تم حفظ بيانات الشركة',

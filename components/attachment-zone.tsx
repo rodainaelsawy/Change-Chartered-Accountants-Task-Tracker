@@ -21,6 +21,7 @@ export function AttachmentZone({
   files,
   blobMode,
   prefix,
+  readOnly = false,
 }: {
   companyId: string
   kind: AttachmentKind
@@ -29,6 +30,8 @@ export function AttachmentZone({
   files: FileRow[]
   blobMode: boolean
   prefix: string
+  /** View/download only (followers). */
+  readOnly?: boolean
 }) {
   const router = useRouter()
   const input = useRef<HTMLInputElement>(null)
@@ -109,7 +112,7 @@ export function AttachmentZone({
               <a href={`/api/attachments/${f.id}?download=1`} className="rounded px-2 py-1 text-xs text-slate-600 hover:bg-slate-100">
                 تحميل
               </a>
-              <button
+              {!readOnly && <button
                 type="button"
                 onClick={async () => {
                   if (!window.confirm(`حذف "${f.file_name}"؟`)) return
@@ -119,12 +122,15 @@ export function AttachmentZone({
                 className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50"
               >
                 حذف
-              </button>
+              </button>}
             </li>
           ))}
         </ul>
       )}
 
+      {readOnly ? (
+        files.length === 0 && <p className="text-sm text-slate-400">لا توجد ملفات</p>
+      ) : (
       <label
         onDragOver={(e) => {
           e.preventDefault()
@@ -154,6 +160,7 @@ export function AttachmentZone({
           onChange={(e) => handle(e.target.files)}
         />
       </label>
+      )}
       {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
     </div>
   )

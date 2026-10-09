@@ -4,11 +4,11 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { logActivity } from '@/lib/activity'
 import { requireSession, type Session } from '@/lib/auth'
-import { canManage, effectiveStatus, taskAccess } from '@/lib/permissions'
+import { effectiveStatus, taskAccess } from '@/lib/permissions'
 import { one, query, tx } from '@/lib/db'
 import { PRIORITIES, STATUSES, isOpen } from '@/lib/labels'
 import { ensureNextOccurrences } from '@/lib/recurrence'
-import { clearTaskNotifications, notifyAssigned, notifyUsers, syncNotifications, taskPeople } from '@/lib/reminders'
+import { clearTaskNotifications, notifyAssigned, notifyUsers, pruneReminders, syncNotifications, taskPeople } from '@/lib/reminders'
 import { insertTask, splitLines } from '@/lib/tasks'
 import type { RecurrenceFreq, TaskPriority, TaskStatus } from '@/lib/types'
 import type { FormState } from './auth'
@@ -18,7 +18,10 @@ const FREQS: RecurrenceFreq[] = ['weekly', 'monthly', 'quarterly', 'yearly']
 const UUID = /^[0-9a-f-]{36}$/i
 
 async function afterChange(org: Session['org'], taskId: string, status: TaskStatus) {
-  if (isOpen(status)) await syncNotifications(org, taskId)
+  if (isOpen(status)) {
+    await pruneReminders(taskId)
+    await syncNotifications(org, taskId)
+  }
   else await clearTaskNotifications(taskId)
 }
 
@@ -40,7 +43,6 @@ async function afterStatus(org: Session['org'], taskId: string, from: TaskStatus
 export async function saveTask(_: FormState, fd: FormData): Promise<FormState> {
   const session = await requireSession()
   const { user, org } = session
-  if (!canManage(user)) return { error: 'ليست لديك صلاحية تعديل المهام' }
   const id = str(fd, 'id')
   const title = str(fd, 'title')
   const companyId = str(fd, 'company_id')
@@ -73,8 +75,6 @@ export async function saveTask(_: FormState, fd: FormData): Promise<FormState> {
     [org.id, [...assigneeIds, ...followerIds]],
   )
   if (validUsers.length !== assigneeIds.length + followerIds.length) return { error: 'أحد المسؤولين أو المتابعين غير موجود' }
-  if (validUsers.some((u) => assigneeIds.includes(u.id) && u.role === 'follower'))
-    return { error: 'المستخدم بدور «متابع» لا يمكن أن يكون مسؤولًا عن مهمة؛ أضفه كمتابع' }
   const nameOf = (uid: string) => validUsers.find((u) => u.id === uid)?.full_name ?? ''
 
   let taskId = id
@@ -270,7 +270,7 @@ export async function duplicateTask(id: string) {
   const session = await requireSession()
   const { user, org } = session
   const access = await taskAccess(id, session)
-  if (!access || !canManage(user)) redirect('/tasks')
+  if (!access) redirect('/tasks')
   const newId = await tx(async (c) => {
     const r = await c.query(
       `insert into tasks (org_id, company_id, title, description, deadline, priority, status, reminder_days, created_by, updated_by)

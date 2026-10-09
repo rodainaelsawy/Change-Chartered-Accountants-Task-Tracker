@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { requireManager } from '@/lib/permissions'
+import { requireSession } from '@/lib/auth'
+import { canManage } from '@/lib/permissions'
 import { Crumbs, Card, Empty, PageHeader, btn } from '@/components/ui'
 import { query } from '@/lib/db'
 import { tasksCount } from '@/lib/labels'
@@ -7,7 +8,7 @@ import { tasksCount } from '@/lib/labels'
 export const metadata = { title: 'قوالب المهام' }
 
 export default async function TemplatesPage() {
-  const { org } = await requireManager()
+  const { org, user } = await requireSession()
   const rows = await query<{ id: string; name: string; description: string | null; items: number; recurring: number }>(
     `select t.id, t.name, t.description,
             (select count(*)::int from task_template_items i where i.template_id = t.id) as items,
@@ -22,9 +23,11 @@ export default async function TemplatesPage() {
         title="قوالب المهام"
         subtitle="مجموعة مهام تُحفظ مرة واحدة وتُطبَّق على شركة أو عدة شركات بضغطة واحدة."
         actions={
-          <Link href="/templates/new" className={btn.primary}>
-            + قالب جديد
-          </Link>
+          canManage(user) && (
+            <Link href="/templates/new" className={btn.primary}>
+              + قالب جديد
+            </Link>
+          )
         }
       />
       <Card className="overflow-hidden">

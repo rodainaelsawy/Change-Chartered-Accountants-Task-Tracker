@@ -75,6 +75,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
+const ERROR_KEYS = ['company_has_open_tasks']
+
 /** Shows the toast for ?msg=<key> (set by server actions before redirecting) and cleans the URL. */
 export function FlashFromUrl() {
   const params = useSearchParams()
@@ -85,7 +87,7 @@ export function FlashFromUrl() {
   useEffect(() => {
     if (!key) return
     const message = FLASH[key as keyof typeof FLASH]
-    if (message) show({ message })
+    if (message) show({ message, tone: ERROR_KEYS.includes(key) ? 'error' : 'success' })
     const rest = new URLSearchParams(params)
     rest.delete('msg')
     router.replace(rest.size ? `${path}?${rest}` : path, { scroll: false })

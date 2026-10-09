@@ -1,7 +1,7 @@
 import 'server-only'
 import { query } from './db'
 import { addDays, formatDate, relativeDue, todayIn } from './dates'
-import { PRIORITY_LABEL } from './labels'
+import { OPEN_SQL, PRIORITY_LABEL } from './labels'
 import { appUrl, emailLayout, escapeHtml, sendMail } from './mail'
 import { ensureNextOccurrences } from './recurrence'
 import type { NotifKind, Org, TaskPriority } from './types'
@@ -12,21 +12,30 @@ import type { NotifKind, Org, TaskPriority } from './types'
   - due_today: once, on the deadline day
   - overdue  : every day after the deadline until the task is done or cancelled
   - assigned : when someone is added as an assignee (not sent to the person who made the change)
- Reminders go to the task's assignees (active users). A task without assignees (should not happen, kept as a
- safety net) notifies every active team member.
+ Reminders go to the task's assignees (active users) — except while the task is «جاهزة للمراجعة», when they go to
+ its followers instead (the assignee has finished; the follower must act before the deadline). A task without
+ assignees (should not happen, kept as a safety net) notifies every active team member.
  Done / cancelled tasks never produce reminders, and their unread reminders are cleared.
 */
 
-// Reminders are for work still to do: a task waiting for review ("review") does not remind its assignees.
-const OPEN = `('not_started','in_progress','on_hold')`
+const OPEN = OPEN_SQL
+
+/**
+ SQL condition: user `uid` should receive reminders for task `tid` with status `st`
+ (followers while it waits for review, otherwise assignees; everyone if it has no active assignee).
+*/
+const RECIPIENT = (uid: string, tid: string, st: string) => `
+  case when ${st} = 'review'
+    then exists (select 1 from task_followers f where f.task_id = ${tid} and f.user_id = ${uid})
+    else exists (select 1 from task_assignees a where a.task_id = ${tid} and a.user_id = ${uid})
+         or not exists (select 1 from task_assignees a join users au on au.id = a.user_id and au.active
+                         where a.task_id = ${tid})
+  end`
 
 /** Users who should receive a task's reminders. */
 const RECIPIENTS = `
   select u.id from users u
-   where u.org_id = $1 and u.active
-     and (exists (select 1 from task_assignees a where a.task_id = d.task_id and a.user_id = u.id)
-          or not exists (select 1 from task_assignees a join users au on au.id = a.user_id and au.active
-                          where a.task_id = d.task_id))`
+   where u.org_id = $1 and u.active and ${RECIPIENT('u.id', 'd.task_id', 'd.status')}`
 
 /** Creates any in-app notifications that are due for open tasks (all, or one task). Idempotent. */
 export async function syncNotifications(org: Pick<Org, 'id' | 'timezone' | 'reminder_days'>, taskId?: string) {
@@ -39,7 +48,7 @@ export async function syncNotifications(org: Pick<Org, 'id' | 'timezone' | 'remi
   }
   await query(
     `with due as (
-       select t.id as task_id,
+       select t.id as task_id, t.status,
               case
                 when t.deadline < $2::date then 'overdue'
                 when t.deadline = $2::date then 'due_today'
@@ -88,6 +97,17 @@ export async function notifyUsers(
 export async function taskPeople(taskId: string, rel: 'assignees' | 'followers') {
   const table = rel === 'assignees' ? 'task_assignees' : 'task_followers'
   return (await query<{ user_id: string }>(`select user_id from ${table} where task_id = $1`, [taskId])).map((r) => r.user_id)
+}
+
+/** After a status change: unread deadline reminders of people who are no longer the recipients are marked read. */
+export async function pruneReminders(taskId: string) {
+  await query(
+    `update notifications n set read_at = now()
+       from tasks t
+      where t.id = n.task_id and n.task_id = $1 and n.read_at is null and n.kind in ('due_soon', 'due_today', 'overdue')
+        and not (${RECIPIENT('n.user_id', 't.id', 't.status')})`,
+    [taskId],
+  )
 }
 
 /** Marks a closed task's unread reminders as read (FR-5.7). */
@@ -151,9 +171,7 @@ async function sendDigests(org: Org, today: string) {
       `select t.id, t.title, t.deadline, t.priority, t.reminder_days, c.name as company_name
          from tasks t join companies c on c.id = t.company_id
         where t.org_id = $1 and t.status in ${OPEN} and t.deadline <= $2
-          and (exists (select 1 from task_assignees a where a.task_id = t.id and a.user_id = $3)
-               or not exists (select 1 from task_assignees a join users au on au.id = a.user_id and au.active
-                               where a.task_id = t.id))
+          and ${RECIPIENT('$3', 't.id', 't.status')}
         order by t.deadline, t.priority desc`,
       [org.id, addDays(today, 7), u.id],
     )

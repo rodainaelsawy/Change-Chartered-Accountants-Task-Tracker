@@ -4,7 +4,8 @@ import { head } from '@vercel/blob'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { ATTACHMENT_KINDS, companyInOrg, deleteCompanyFiles, recordAttachment } from '@/lib/attachments'
-import { requireAdmin, requireSession } from '@/lib/auth'
+import { requireSession } from '@/lib/auth'
+import { openTaskCount } from '@/lib/queries'
 import { requireManager } from '@/lib/permissions'
 import { decrypt, encrypt } from '@/lib/crypto'
 import { one, query, tx } from '@/lib/db'
@@ -85,9 +86,11 @@ export async function setCompanyArchived(id: string, archived: boolean) {
   revalidatePath(`/companies/${id}`)
 }
 
+/** Admin or مشرف; refused while the company still has open tasks (all of them, not only the user's). */
 export async function deleteCompany(id: string) {
-  const { org } = await requireAdmin()
+  const { org } = await requireManager()
   if (!(await companyInOrg(id, org.id))) redirect('/companies')
+  if ((await openTaskCount(id)) > 0) redirect(`/companies/${id}?msg=company_has_open_tasks`)
   await deleteCompanyFiles(id)
   await query('delete from companies where id = $1 and org_id = $2', [id, org.id])
   revalidatePath('/', 'layout')

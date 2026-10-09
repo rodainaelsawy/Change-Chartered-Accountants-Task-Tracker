@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ReviewPanel } from '@/components/review-panel'
-import { canManage, taskAccess } from '@/lib/permissions'
+import { taskAccess } from '@/lib/permissions'
 import { deleteTask, duplicateTask, stopRecurrence } from '@/app/actions/tasks'
 import { ConfirmButton } from '@/components/action-form'
 import { TaskChecklist, type ChecklistItem } from '@/components/task-checklist'
@@ -245,11 +245,10 @@ export default async function TaskPage({
             )}
           </Card>
 
-          {(canManage(user) || access.remove) && (
           <Card className="space-y-2 p-5">
-            {canManage(user) && <form action={duplicateTask.bind(null, task.id)}>
+            <form action={duplicateTask.bind(null, task.id)}>
               <SubmitButton className={`${btn.secondary} w-full`}>نسخ المهمة</SubmitButton>
-            </form>}
+            </form>
             {access.remove && <ConfirmButton
               action={deleteTask.bind(null, task.id)}
               confirmText="هل تريد حذف هذه المهمة نهائيًا؟"
@@ -258,7 +257,6 @@ export default async function TaskPage({
               حذف المهمة
             </ConfirmButton>}
           </Card>
-          )}
         </div>
       </div>
     </>

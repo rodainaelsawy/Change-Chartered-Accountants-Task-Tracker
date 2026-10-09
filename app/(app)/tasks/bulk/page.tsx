@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { requireManager } from '@/lib/permissions'
+import { requireSession } from '@/lib/auth'
 import { bulkAddTasks } from '@/app/actions/templates'
 import { ActionForm } from '@/components/action-form'
 import { ASSIGNEES_CHECK, AssigneePicker } from '@/components/assignee-picker'
@@ -13,7 +13,7 @@ import { companyOptions, teamMembers } from '@/lib/queries'
 export const metadata = { title: 'إضافة عدة مهام' }
 
 export default async function BulkAddPage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
-  const { org, user } = await requireManager()
+  const { org, user } = await requireSession()
   const sp = await searchParams
   const [companies, team] = await Promise.all([companyOptions(org.id), teamMembers(org.id)])
   return (

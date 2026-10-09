@@ -9,6 +9,7 @@ export const FLASH = {
   company_created: 'تمت إضافة الشركة — يمكنك الآن رفع مرفقاتها',
   company_saved: 'تم حفظ بيانات الشركة',
   company_deleted: 'تم حذف الشركة',
+  company_has_open_tasks: 'لا يمكن حذف الشركة لأن لديها مهام مفتوحة. أنجز المهام أو ألغها أولًا ثم احذف الشركة.',
   template_saved: 'تم حفظ القالب',
   template_deleted: 'تم حذف القالب',
   tasks_added: 'تمت إضافة المهام',

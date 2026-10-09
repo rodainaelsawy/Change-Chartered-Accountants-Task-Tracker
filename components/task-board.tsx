@@ -36,7 +36,7 @@ export function TaskBoard({ tasks, today, viewer }: { tasks: Task[]; today: stri
     const admin = viewer.role === 'admin'
     const mine = Boolean(t.assignees?.some((a) => a.id === viewer.id)) || t.created_by === viewer.id
     const follows = Boolean(t.followers?.some((f) => f.id === viewer.id))
-    return { edit: admin || (viewer.role !== 'follower' && mine), review: admin || follows }
+    return { edit: admin || mine || follows, review: admin || follows }
   }
   const canMove = (t: Task, to: TaskStatus) => {
     const p = perms(t)

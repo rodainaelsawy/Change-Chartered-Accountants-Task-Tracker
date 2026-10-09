@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { canManage, isAdmin, visibleTo } from '@/lib/permissions'
+import { canManage, visibleTo } from '@/lib/permissions'
 import { notFound } from 'next/navigation'
 import { deleteCompany, setCompanyArchived } from '@/app/actions/companies'
 import { ConfirmButton } from '@/components/action-form'
@@ -14,7 +14,7 @@ import { isOpen, tasksCount } from '@/lib/labels'
 import { requireSession } from '@/lib/auth'
 import { one, query } from '@/lib/db'
 import { formatDateTime, todayIn } from '@/lib/dates'
-import { TASK_SELECT } from '@/lib/queries'
+import { TASK_SELECT, openTaskCount } from '@/lib/queries'
 import { blobEnabled, companyPrefix } from '@/lib/storage'
 import type { Attachment, Company, Task } from '@/lib/types'
 
@@ -49,7 +49,7 @@ export default async function CompanyPage({
   if (!company) notFound()
 
   const today = todayIn(org.timezone)
-  const [tasks, attachments] = await Promise.all([
+  const [tasks, attachments, openAll] = await Promise.all([
     query<Task>(`${TASK_SELECT} where t.company_id = $1 and ${visibleTo(user, '$2')} order by t.deadline`, [id, user.id]),
     query<Attachment>(
       `select a.id, a.kind, a.file_name, a.size_bytes, a.created_at, u.full_name as uploaded_by_name
@@ -57,6 +57,7 @@ export default async function CompanyPage({
         where a.company_id = $1 order by a.created_at desc`,
       [id],
     ),
+    openTaskCount(id),
   ])
   const open = tasks.filter((t) => isOpen(t.status))
   const done = tasks.filter((t) => !open.includes(t))
@@ -200,10 +201,19 @@ export default async function CompanyPage({
             <form action={setCompanyArchived.bind(null, company.id, !company.archived_at)}>
               <SubmitButton className={`${btn.secondary} w-full`}>{company.archived_at ? 'إلغاء الأرشفة' : 'أرشفة الشركة'}</SubmitButton>
             </form>
-            {isAdmin(user) && (
+            {openAll > 0 ? (
+              <div>
+                <button type="button" disabled className={`${btn.danger} w-full cursor-not-allowed opacity-50`}>
+                  حذف الشركة
+                </button>
+                <p className="mt-2 text-xs text-slate-500">
+                  لا يمكن حذف الشركة لأن لديها مهام مفتوحة ({openAll}). عند إنجاز المهام أو إلغائها يمكن حذفها.
+                </p>
+              </div>
+            ) : (
             <ConfirmButton
               action={deleteCompany.bind(null, company.id)}
-              confirmText={`سيتم حذف الشركة "${company.name}" وجميع مهامها (${tasks.length}) ومرفقاتها (${attachments.length}) نهائيًا. هل أنت متأكد؟`}
+              confirmText={`سيتم حذف الشركة "${company.name}" وكل مهامها المنجزة والملغاة ومرفقاتها (${attachments.length}) نهائيًا. هل أنت متأكد؟`}
               className={`${btn.danger} w-full`}
             >
               حذف الشركة

@@ -5,23 +5,26 @@ import { one } from './db'
 import type { TaskStatus, User } from './types'
 
 /*
- Roles (Phase 3):
-  - admin    : everything (all tasks, companies, reports, workload, team).
-  - member   : "مسؤول مهام" (Assignee). Sees and edits only the tasks they are assigned to (or created).
-               Can add companies and tasks. If a task has followers, "done" becomes "جاهزة للمراجعة".
-  - follower : "متابع". Sees only the tasks they follow; approves them (→ منجزة) or returns them
-               (→ قيد التنفيذ, with a comment). Can comment. Cannot create or edit tasks or companies.
- Per task: assignees (task_assignees) do the work; followers (task_followers) review it.
+ Roles (users.role):
+  - admin  «مدير»: everything (all tasks, companies, reports, workload, team).
+  - member «مشرف»: like an admin, but only sees the tasks they are assigned to / follow / created.
+                   Full company management (add / edit / delete when no open tasks, files, import, templates).
+  - staff  «عضو» : only their tasks (assigned / followed / created); can create and edit them.
+                   Companies are read-only (files: view/download only).
+ ('follower' is a retired role value; such users were moved to 'staff'.)
+ Per task, anyone of any role can be an assignee (task_assignees) or a follower (task_followers).
+ Followers review: on a task with followers, «منجزة» by a non-follower becomes «جاهزة للمراجعة».
+ A task can be deleted by an admin or by its creator.
 */
 
 export const isAdmin = (u: Pick<User, 'role'>) => u.role === 'admin'
-/** Can add/edit companies, tasks, templates and import data. */
-export const canManage = (u: Pick<User, 'role'>) => u.role !== 'follower'
+/** Can add/edit/delete companies and their files, import data and manage templates (admin + مشرف). */
+export const canManage = (u: Pick<User, 'role'>) => u.role === 'admin' || u.role === 'member'
 
-/** Session of a user who may add/edit companies, tasks and templates (not followers). */
+/** Session of a user who may manage companies, files, import and templates. */
 export async function requireManager(): Promise<Session> {
   const s = await requireSession()
-  if (!canManage(s.user)) redirect('/tasks')
+  if (!canManage(s.user)) redirect('/companies')
   return s
 }
 
@@ -47,7 +50,7 @@ export type TaskAccess = {
   has_followers: boolean
   /** Can see the task at all. */
   view: boolean
-  /** Can change its fields, status, checklist. */
+  /** Can change its fields, status, checklist (everyone who can see it: admin, assignees, followers, creator). */
   edit: boolean
   /** Can approve / return it (a follower of the task, or an admin). */
   review: boolean
@@ -68,15 +71,14 @@ export async function taskAccess(taskId: string, s: Session): Promise<TaskAccess
   )
   if (!t) return null
   const admin = isAdmin(s.user)
-  const mine = t.assignee || t.created_by === s.user.id
-  const view = admin || mine || t.follower
-  if (!view) return null
+  const mine = t.assignee || t.follower || t.created_by === s.user.id
+  if (!admin && !mine) return null
   return {
     ...t,
-    view,
-    edit: admin || (canManage(s.user) && mine),
+    view: true,
+    edit: true,
     review: admin || t.follower,
-    remove: admin || (canManage(s.user) && t.created_by === s.user.id),
+    remove: admin || t.created_by === s.user.id,
   }
 }
 

@@ -3,7 +3,7 @@
 import { requireManager } from '@/lib/permissions'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { type Session } from '@/lib/auth'
+import { requireSession, type Session } from '@/lib/auth'
 import { one, query, tx } from '@/lib/db'
 import { addDays } from '@/lib/dates'
 import { PRIORITIES, companiesCount, tasksCount } from '@/lib/labels'
@@ -22,7 +22,7 @@ async function validAssignees(orgId: string, fd: FormData) {
   const ids = [...new Set(all(fd, 'assignees').filter((v) => UUID.test(v)))]
   if (!ids.length) return { error: 'اختر مسؤولًا واحدًا على الأقل' as const }
   const n = await one<{ n: number }>(
-    "select count(*)::int as n from users where org_id = $1 and active and role <> 'follower' and id = any($2::uuid[])",
+    'select count(*)::int as n from users where org_id = $1 and active and id = any($2::uuid[])',
     [orgId, ids],
   )
   if (n!.n !== ids.length) return { error: 'أحد المسؤولين غير موجود' as const }
@@ -106,7 +106,7 @@ export async function deleteTemplate(id: string) {
 
 /** Creates all of a template's tasks for each selected company. */
 export async function applyTemplate(_: FormState, fd: FormData): Promise<FormState> {
-  const { user, org } = await requireManager()
+  const { user, org } = await requireSession()
   const templateId = str(fd, 'template_id')
   const start = str(fd, 'start_date')
   const companyIds = [...new Set(all(fd, 'companies').filter((v) => UUID.test(v)))]
@@ -162,7 +162,7 @@ export async function applyTemplate(_: FormState, fd: FormData): Promise<FormSta
 
 /** Adds several tasks for one company at once (rows of title / deadline / priority). */
 export async function bulkAddTasks(_: FormState, fd: FormData): Promise<FormState> {
-  const { user, org } = await requireManager()
+  const { user, org } = await requireSession()
   const companyId = str(fd, 'company_id')
   const titles = all(fd, 'row_title')
   const deadlines = all(fd, 'row_deadline')

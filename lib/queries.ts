@@ -1,7 +1,7 @@
 import 'server-only'
 import { query } from './db'
 import { addDays } from './dates'
-import { OPEN_STATUSES, PRIORITIES, STATUSES } from './labels'
+import { OPEN_SQL, OPEN_STATUSES, PRIORITIES, STATUSES } from './labels'
 import { visibleTo } from './permissions'
 import type { Task, User, UserRole } from './types'
 
@@ -75,6 +75,12 @@ export async function listTasks(
 
   const order = SORTS[f.sort || 'deadline'] ?? SORTS.deadline
   return query<Task>(`${TASK_SELECT} where ${where.join(' and ')} order by ${order} limit ${limit}`, params)
+}
+
+/** Open tasks of a company (all of them, whoever they belong to): a company with open tasks cannot be deleted. */
+export async function openTaskCount(companyId: string) {
+  const r = await query<{ n: number }>(`select count(*)::int as n from tasks where company_id = $1 and status in ${OPEN_SQL}`, [companyId])
+  return r[0].n
 }
 
 export async function companyOptions(orgId: string, includeId?: string) {

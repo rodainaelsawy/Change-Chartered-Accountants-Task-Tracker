@@ -11,7 +11,6 @@ import { formatDate, todayIn } from '@/lib/dates'
 import { PRIORITIES, PRIORITY_LABEL, STATUSES, STATUS_LABEL, tasksCount } from '@/lib/labels'
 import { TASK_FILTER_KEYS, companyOptions, filterQuery, listTasks, parseTaskFilters, teamMembers, type TaskFilters } from '@/lib/queries'
 import { PrintButton } from '@/components/print-button'
-import { canManage } from '@/lib/permissions'
 
 export const metadata = { title: 'المهام' }
 
@@ -44,7 +43,6 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
         title={mine ? 'مهامي' : 'المهام'}
         subtitle={tasksCount(tasks.length)}
         actions={
-          canManage(user) && (
           <>
             <Link href="/templates" className={btn.secondary}>
               القوالب
@@ -56,14 +54,12 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
               + مهمة جديدة
             </Link>
           </>
-          )
         }
       />
 
       <p className="mb-2 hidden text-sm text-slate-600 print:block">
         {org.name} · طُبعت في {formatDate(today)}
       </p>
-      {canManage(user) && (
       <div className="mb-3 flex gap-1 print:hidden">
         <Link href={tabHref('')} className={`rounded-lg px-3 py-1.5 text-sm font-medium ${!mine ? 'bg-brand-50 text-brand-800' : 'text-slate-600 hover:bg-slate-100'}`}>
           كل المهام
@@ -72,7 +68,6 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
           مهامي
         </Link>
       </div>
-      )}
 
       {/* Plain GET form: filters live in the URL, so a filtered view can be bookmarked or shared (FR-7.1, FR-7.2) */}
       <Card className="mb-4 p-4 print:hidden">

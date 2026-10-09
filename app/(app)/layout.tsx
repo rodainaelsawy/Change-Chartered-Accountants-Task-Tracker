@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { cookies } from 'next/headers'
 import { after } from 'next/server'
 import { Suspense } from 'react'
 import { logout } from '@/app/actions/auth'
@@ -44,23 +45,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         orgName={org.name}
         overdue={counts.overdue}
         toReview={counts.to_review}
-        footer={
-          <div className="flex items-center gap-2">
-            <Link href="/settings" className="flex min-w-0 flex-1 items-center gap-2 rounded-lg p-2 hover:bg-slate-100" title="بياناتي والإعدادات">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 font-bold text-brand-800">
-                {(user.full_name || user.email).trim().charAt(0)}
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-medium text-slate-900">{user.full_name || user.email}</span>
-                <span className="block text-xs text-slate-500">{ROLE_LABEL[user.role]}</span>
-              </span>
-            </Link>
-            <form action={logout}>
-              <SubmitButton className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-red-700" title="تسجيل الخروج" aria-label="تسجيل الخروج">
-                <LogOut className="h-5 w-5" />
-              </SubmitButton>
-            </form>
-          </div>
+        userName={user.full_name || user.email}
+        roleLabel={ROLE_LABEL[user.role]}
+        initialCollapsed={(await cookies()).get('sidebar')?.value === 'collapsed'}
+        logout={
+          <form action={logout}>
+            <SubmitButton className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-red-700" title="تسجيل الخروج" aria-label="تسجيل الخروج">
+              <LogOut className="h-5 w-5" />
+            </SubmitButton>
+          </form>
         }
         topbar={
           <div className="flex flex-1 items-center justify-end gap-1 lg:justify-between">

@@ -92,7 +92,7 @@ export async function teamMembers(orgId: string) {
 }
 
 /** URL params that make up the task-list filters (remembered between visits). */
-export const TASK_FILTER_KEYS = ['q', 'company', 'assignee', 'status', 'priority', 'due', 'sort'] as const
+export const TASK_FILTER_KEYS = ['q', 'company', 'assignee', 'status', 'priority', 'due', 'sort', 'view'] as const
 
 /** Only the non-empty filter params, as a query string. */
 export function filterQuery(get: (k: string) => string, extra: Record<string, string> = {}) {

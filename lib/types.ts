@@ -1,7 +1,7 @@
 export type TaskStatus = 'not_started' | 'in_progress' | 'on_hold' | 'review' | 'done' | 'cancelled'
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
-/** 'member' = Assignee (works on own tasks), 'follower' = reviews the tasks they follow. */
-export type UserRole = 'admin' | 'member' | 'follower'
+/** 'admin' = مدير, 'member' = مشرف (sees only own tasks, manages companies), 'staff' = عضو (own tasks, companies read-only). */
+export type UserRole = 'admin' | 'member' | 'staff'
 export type NotifKind =
   | 'due_soon'
   | 'due_today'

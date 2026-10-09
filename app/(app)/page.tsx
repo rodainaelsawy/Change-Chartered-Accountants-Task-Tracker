@@ -82,11 +82,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         title={`مرحبًا ${user.full_name.split(' ')[0] || ''}`}
         subtitle={`${formatWeekday(today)}، ${formatDate(today)}`}
         actions={
-          canManage(user) && (
-            <Link href="/tasks/new" className={btn.primary}>
-              + مهمة جديدة
-            </Link>
-          )
+          <Link href="/tasks/new" className={btn.primary}>
+            + مهمة جديدة
+          </Link>
         }
       />
 

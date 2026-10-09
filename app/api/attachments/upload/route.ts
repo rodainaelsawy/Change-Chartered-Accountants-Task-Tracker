@@ -1,4 +1,5 @@
 import crypto from 'node:crypto'
+import { canManage } from '@/lib/permissions'
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
 import { ATTACHMENT_KINDS, companyInOrg, recordAttachment } from '@/lib/attachments'
 import { getSession } from '@/lib/auth'
@@ -19,7 +20,7 @@ const err = (message: string, status = 400) => Response.json({ error: message },
 export async function POST(req: Request) {
   const session = await getSession()
   if (!session) return err('غير مصرح', 401)
-  if (session.user.role === 'follower') return err('ليست لديك صلاحية رفع الملفات', 403)
+  if (!canManage(session.user)) return err('ليست لديك صلاحية رفع الملفات', 403)
   const { org, user } = session
 
   if (blobEnabled()) {

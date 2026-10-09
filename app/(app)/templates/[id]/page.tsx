@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { requireManager } from '@/lib/permissions'
+import { requireSession } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import { applyTemplate, deleteTemplate } from '@/app/actions/templates'
 import { ActionForm, ConfirmButton } from '@/components/action-form'
@@ -23,7 +23,7 @@ export default async function TemplatePage({
   params: Promise<{ id: string }>
   searchParams: Promise<{ edit?: string }>
 }) {
-  const { org, user } = await requireManager()
+  const { org, user } = await requireSession()
   const { id } = await params
   const sp = await searchParams
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()

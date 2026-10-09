@@ -51,8 +51,8 @@ export default async function WorkloadPage() {
                count(t.id) filter (where t.status in ${OPEN_SQL}) desc, u.full_name`,
     [org.id, today, addDays(today, 7), monthStart, org.timezone],
   )
-  const doers = rows.filter((r) => r.role !== 'follower')
-  const reviewers = rows.filter((r) => r.following > 0 || r.role === 'follower')
+  const doers = rows
+  const reviewers = rows.filter((r) => r.following > 0)
   const maxOpen = Math.max(1, ...doers.map((r) => r.open))
   const link = (id: string, extra = '') => `/tasks?assignee=${id}${extra}`
   const num = (n: number, href: string, cls = '') =>

@@ -51,7 +51,7 @@ export default async function CalendarPage({
   // Grid: Saturday-first weeks covering the whole month.
   const gridStart = startOfWeek(first)
   const gridEnd = addDays(startOfWeek(last), 6)
-  const mine = user.role === 'follower' ? false : sp.scope ? sp.scope === 'mine' : user.role !== 'admin'
+  const mine = sp.scope ? sp.scope === 'mine' : user.role !== 'admin'
   const showClosed = sp.closed === '1'
 
   const params: unknown[] = [org.id, gridStart, gridEnd]
@@ -114,14 +114,14 @@ export default async function CalendarPage({
             </Link>
           )}
         </div>
-        {user.role !== 'follower' && <div className="flex gap-1">
+        <div className="flex gap-1">
           <Link href={qs({ scope: 'mine' })} className={`rounded-lg px-3 py-1 text-sm ${mine ? 'bg-brand-50 font-medium text-brand-800' : 'text-slate-600 hover:bg-slate-100'}`}>
             مهامي
           </Link>
           <Link href={qs({ scope: 'all' })} className={`rounded-lg px-3 py-1 text-sm ${!mine ? 'bg-brand-50 font-medium text-brand-800' : 'text-slate-600 hover:bg-slate-100'}`}>
             كل المهام
           </Link>
-        </div>}
+        </div>
         <form action="/calendar" className="flex flex-wrap items-center gap-2 text-sm">
           <input type="hidden" name="month" value={month} />
           <input type="hidden" name="scope" value={mine ? 'mine' : 'all'} />

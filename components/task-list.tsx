@@ -35,7 +35,7 @@ export function TaskList({
               id={t.id}
               title={t.title}
               status={t.status}
-              canEdit={admin || (viewer.role !== 'follower' && mine)}
+              canEdit={admin || mine || follows}
               canReview={admin || follows}
             />
             <div className="min-w-0 flex-1">

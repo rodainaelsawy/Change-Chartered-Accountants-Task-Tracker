@@ -92,7 +92,7 @@ export default async function SettingsPage() {
                 <input name="email" type="email" required className={`${inputCls} ltr`} />
               </Field>
               <Field label="الصلاحية">
-                <select name="role" required className={inputCls} defaultValue="member">
+                <select name="role" required className={inputCls} defaultValue="staff">
                   {(Object.keys(ROLE_LABEL) as UserRole[]).map((r) => (
                     <option key={r} value={r}>
                       {ROLE_LABEL[r]} — {ROLE_HINT[r]}

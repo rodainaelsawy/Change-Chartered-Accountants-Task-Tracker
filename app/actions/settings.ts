@@ -71,7 +71,7 @@ export async function inviteUser(_: FormState, fd: FormData): Promise<FormState>
   if (exists) return { error: 'يوجد مستخدم بهذا البريد بالفعل' }
   const u = (await one<{ id: string }>(
     `insert into users (org_id, email, full_name, role) values ($1, $2, $3, $4) returning id`,
-    [org.id, email, fullName, ROLES.includes(fd.get('role') as UserRole) ? fd.get('role') : 'member'],
+    [org.id, email, fullName, ROLES.includes(fd.get('role') as UserRole) ? fd.get('role') : 'staff'],
   ))!
   const link = await sendInvite(u.id, email, fullName, org.name, user.full_name)
   revalidatePath('/settings')
@@ -101,7 +101,7 @@ export async function setUserActive(userId: string, active: boolean) {
   revalidatePath('/settings')
 }
 
-const ROLES: UserRole[] = ['admin', 'member', 'follower']
+const ROLES: UserRole[] = ['admin', 'member', 'staff']
 
 export async function setUserRole(userId: string, role: UserRole) {
   const { user, org } = await requireAdmin()

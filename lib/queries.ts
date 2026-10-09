@@ -16,7 +16,8 @@ export type TaskFilters = {
 }
 
 const SORTS: Record<string, string> = {
-  deadline: 't.deadline asc, t.priority desc',
+  // Unfinished tasks first, then by deadline (so old completed tasks don't fill the top of the list).
+  deadline: "(t.status in ('done','cancelled')), t.deadline asc, t.priority desc",
   company: 'c.name asc, t.deadline asc',
   priority: 't.priority desc, t.deadline asc',
   status: 't.status asc, t.deadline asc',

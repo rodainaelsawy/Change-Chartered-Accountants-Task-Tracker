@@ -159,7 +159,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       )}
 
       <div className="mt-6 grid gap-6 xl:grid-cols-3">
-      <div className="space-y-6 xl:col-span-2">
+      <div className="min-w-0 space-y-6 xl:col-span-2">
         <Card className="overflow-hidden">
           <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
             <h2 className="flex items-center gap-2 font-semibold">
@@ -187,7 +187,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         </Card>
       </div>
 
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-6">
       <Card className="p-4">
         <h2 className="mb-4 font-semibold">المهام المنجزة أسبوعيًا</h2>
         <WeeklyChart weeks={weeks} />

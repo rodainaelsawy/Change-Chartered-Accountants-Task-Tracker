@@ -29,9 +29,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="min-h-screen">
         <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur print:hidden">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 lg:px-8">
-            <Link href="/" className="flex min-w-0 flex-1 items-center gap-2 lg:flex-none" title="لوحة المتابعة">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-700 font-bold text-white">✓</span>
-              <span className="truncate font-bold text-slate-900">{org.name}</span>
+            <Link href="/" className="flex min-w-0 flex-1 items-center lg:flex-none" title="لوحة المتابعة">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt={org.name} width={600} height={150} className="h-9 w-auto shrink-0 sm:h-10" />
             </Link>
 
             <div className="flex shrink-0 items-center gap-0.5 sm:gap-1 lg:order-last lg:ms-auto">

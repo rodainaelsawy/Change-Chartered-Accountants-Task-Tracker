@@ -1,9 +1,6 @@
 import type { Metadata, Viewport } from 'next'
-// Self-hosted Arabic font (no request to Google at runtime).
-import '@fontsource/ibm-plex-sans-arabic/400.css'
-import '@fontsource/ibm-plex-sans-arabic/500.css'
-import '@fontsource/ibm-plex-sans-arabic/600.css'
-import '@fontsource/ibm-plex-sans-arabic/700.css'
+// Self-hosted Arabic font "Alexandria" (variable weights, no request to Google at runtime).
+import '@fontsource-variable/alexandria/wght.css'
 import './globals.css'
 
 export const metadata: Metadata = {

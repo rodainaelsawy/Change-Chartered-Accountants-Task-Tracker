@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 @theme {
-  --font-sans: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, 'Noto Sans Arabic', system-ui, sans-serif;
+  --font-sans: 'Alexandria Variable', 'Segoe UI', Tahoma, 'Noto Sans Arabic', system-ui, sans-serif;
   /* Brand = the navy of the office logo (#12416B = brand-700) */
   --color-brand-50: #eef4fa;
   --color-brand-100: #d7e5f2;
@@ -59,21 +59,24 @@ label[data-error]::after,
 
 /* ---------- Dark mode (components/theme-toggle.tsx sets <html data-theme="dark">) ----------
    Every colour scale is mirrored (50 ↔ 950, 100 ↔ 900, …), so "light background + dark text" pairs
-   become "dark background + light text" without touching the pages. White surfaces become dark slate. */
+   become "dark background + light text" without touching the pages. Slate and brand use hand-tuned
+   steps: a soft blue-grey (not black) background and bright, readable text. */
 @media screen {
   :root[data-theme='dark'] {
     color-scheme: dark;
-    --color-white: oklch(23.5% 0.04 265.5);
-    --color-slate-50: oklch(12.9% 0.042 264.695);
-    --color-slate-100: oklch(20.8% 0.042 265.755);
-    --color-slate-200: oklch(27.9% 0.041 260.031);
-    --color-slate-300: oklch(37.2% 0.044 257.287);
-    --color-slate-400: oklch(44.6% 0.043 257.281);
-    --color-slate-600: oklch(70.4% 0.04 256.788);
-    --color-slate-700: oklch(86.9% 0.022 252.894);
-    --color-slate-800: oklch(92.9% 0.013 255.508);
-    --color-slate-900: oklch(96.8% 0.007 247.896);
-    --color-slate-950: oklch(98.4% 0.003 247.858);
+    --color-white: #222e42; /* cards, sidebar, inputs */
+    --color-slate-50: #1b2535;
+    --color-slate-500: #b4c0d0;
+    --color-brand-500: #6f9bcf;
+    --color-slate-100: #2a374d;
+    --color-slate-200: #3a4962;
+    --color-slate-300: #4f607a;
+    --color-slate-400: #9eacc0;
+    --color-slate-600: #cfd8e4;
+    --color-slate-700: #dee5ee;
+    --color-slate-800: #eaeff5;
+    --color-slate-900: #f4f7fa;
+    --color-slate-950: #fbfcfd;
     --color-red-50: oklch(25.8% 0.092 26.042);
     --color-red-100: oklch(39.6% 0.141 25.723);
     --color-red-200: oklch(44.4% 0.177 26.899);
@@ -134,16 +137,29 @@ label[data-error]::after,
     --color-violet-800: oklch(89.4% 0.057 293.283);
     --color-violet-900: oklch(94.3% 0.029 294.588);
     --color-violet-950: oklch(96.9% 0.016 293.756);
-    --color-brand-50: #061a2d;
-    --color-brand-100: #0b2944;
-    --color-brand-200: #0e3557;
-    --color-brand-300: #12416b;
-    --color-brand-400: #1f5487;
-    --color-brand-600: #5384bb;
-    --color-brand-700: #82a9d2;
-    --color-brand-800: #b0cae5;
-    --color-brand-900: #d7e5f2;
+    --color-brand-50: #1d3655;
+    --color-brand-100: #25466c;
+    --color-brand-200: #2f5884;
+    --color-brand-300: #5d8ac0;
+    --color-brand-400: #7fa5d3;
+    --color-brand-600: #a9c6e8;
+    --color-brand-700: #9cc0e8;
+    --color-brand-800: #c3d8f0;
+    --color-brand-900: #dce8f6;
     --color-brand-950: #eef4fa;
+  }
+  /* Softer tints for the light backgrounds of badges, alerts and late rows */
+  :root[data-theme='dark'] {
+    --color-red-50: #3a2833;
+    --color-red-100: #4a2c38;
+    --color-amber-50: #3a3328;
+    --color-amber-100: #4a3f2a;
+    --color-emerald-50: #1f3b36;
+    --color-emerald-100: #234a42;
+    --color-sky-50: #1f3650;
+    --color-sky-100: #24425f;
+    --color-violet-50: #2f2c4d;
+    --color-violet-100: #3a345e;
   }
   :root[data-theme='dark'] .text-white {
     color: #fff;

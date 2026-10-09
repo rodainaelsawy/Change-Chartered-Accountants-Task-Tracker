@@ -1,11 +1,14 @@
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { ReviewPanel } from '@/components/review-panel'
+import { canManage, taskAccess } from '@/lib/permissions'
 import { deleteTask, duplicateTask, stopRecurrence } from '@/app/actions/tasks'
 import { ConfirmButton } from '@/components/action-form'
 import { TaskChecklist, type ChecklistItem } from '@/components/task-checklist'
 import { TaskComments } from '@/components/task-comments'
 import { TaskForm } from '@/components/task-form'
 import { SubmitButton } from '@/components/submit-button'
-import { Card, Crumbs, DueText, PageHeader, StatusBadge, btn } from '@/components/ui'
+import { Alert, Card, Crumbs, DueText, PageHeader, PriorityText, StatusBadge, btn } from '@/components/ui'
 import { describeActivity } from '@/lib/activity'
 import { requireSession } from '@/lib/auth'
 import { one, query } from '@/lib/db'
@@ -21,9 +24,11 @@ export default async function TaskPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  const { org, user } = await requireSession()
+  const session = await requireSession()
+  const { org, user } = session
   const { id } = await params
-  if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()
+  const access = await taskAccess(id, session)
+  if (!access) notFound()
 
   const task = await one<Task>(
     `select t.*, c.name as company_name, cu.full_name as created_by_name, uu.full_name as updated_by_name
@@ -35,11 +40,15 @@ export default async function TaskPage({
   )
   if (!task) notFound()
 
-  const [companies, team, assignees, checklist, comments, activity, series] = await Promise.all([
+  const [companies, team, assignees, followers, checklist, comments, activity, series] = await Promise.all([
     companyOptions(org.id, task.company_id),
     teamMembers(org.id),
     query<{ id: string; full_name: string; active: boolean }>(
       'select u.id, u.full_name, u.active from task_assignees a join users u on u.id = a.user_id where a.task_id = $1 order by u.full_name',
+      [id],
+    ),
+    query<{ id: string; full_name: string; active: boolean }>(
+      'select u.id, u.full_name, u.active from task_followers f join users u on u.id = f.user_id where f.task_id = $1 order by u.full_name',
       [id],
     ),
     query<ChecklistItem>(
@@ -80,12 +89,27 @@ export default async function TaskPage({
             {series && <span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs text-violet-800">↻ {FREQ_LABEL[series.frequency]}</span>}
           </span>
         }
-        actions={<div id="task-form-actions" className="flex flex-wrap items-center gap-2" />}
+        actions={
+          access.edit ? (
+            <div id="task-form-actions" className="flex flex-wrap items-center gap-2" />
+          ) : (
+            <Link href="/tasks" className={btn.secondary}>
+              → رجوع إلى المهام
+            </Link>
+          )
+        }
       />
 
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          {access.review && task.status === 'review' && <ReviewPanel taskId={task.id} />}
+          {!access.review && task.status === 'review' && (
+            <Alert kind="info">
+              المهمة بانتظار مراجعة: {followers.map((f) => f.full_name).join('، ')}. سيصلك تنبيه عند الاعتماد أو الإعادة.
+            </Alert>
+          )}
+          {access.edit ? (
           <Card className="p-5">
             <TaskForm
               key={String(task.updated_at)}
@@ -93,6 +117,7 @@ export default async function TaskPage({
               companies={companies}
               team={team}
               assigneeIds={assignees.map((a) => a.id)}
+              followerIds={followers.map((f) => f.id)}
               defaultDeadline={task.deadline}
               orgReminderDays={org.reminder_days}
               today={today}
@@ -101,9 +126,44 @@ export default async function TaskPage({
               actionsTarget="task-form-actions"
             />
           </Card>
+          ) : (
+            <Card className="p-5">
+              <h2 className="mb-3 font-semibold">بيانات المهمة</h2>
+              <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-xs text-slate-400">الشركة</dt>
+                  <dd>
+                    <Link href={`/companies/${task.company_id}`} className="text-brand-700 hover:underline">
+                      {task.company_name}
+                    </Link>
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-slate-400">الأولوية</dt>
+                  <dd>
+                    <PriorityText priority={task.priority} />
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-slate-400">المسؤولون</dt>
+                  <dd>{assignees.map((a) => a.full_name).join('، ')}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-slate-400">المتابعون</dt>
+                  <dd>{followers.map((a) => a.full_name).join('، ') || '—'}</dd>
+                </div>
+                {task.description && (
+                  <div className="sm:col-span-2">
+                    <dt className="text-xs text-slate-400">الوصف</dt>
+                    <dd className="whitespace-pre-wrap text-slate-700">{task.description}</dd>
+                  </div>
+                )}
+              </dl>
+            </Card>
+          )}
           <Card className="p-5">
             <h2 className="mb-3 font-semibold">خطوات المهمة</h2>
-            <TaskChecklist taskId={task.id} items={checklist} />
+            <TaskChecklist taskId={task.id} items={checklist} readOnly={!access.edit} />
           </Card>
 
           <Card className="p-5">
@@ -132,7 +192,7 @@ export default async function TaskPage({
                 <div>
                   <dt className="text-xs text-slate-400">التكرار</dt>
                   <dd>
-                    {series.active ? (
+                    {series.active && access.edit ? (
                       <>
                         {FREQ_LABEL[series.frequency]} — تُنشأ المرة التالية تلقائيًا عند الإنجاز أو حلول الموعد.
                         <ConfirmButton
@@ -185,18 +245,20 @@ export default async function TaskPage({
             )}
           </Card>
 
+          {(canManage(user) || access.remove) && (
           <Card className="space-y-2 p-5">
-            <form action={duplicateTask.bind(null, task.id)}>
+            {canManage(user) && <form action={duplicateTask.bind(null, task.id)}>
               <SubmitButton className={`${btn.secondary} w-full`}>نسخ المهمة</SubmitButton>
-            </form>
-            <ConfirmButton
+            </form>}
+            {access.remove && <ConfirmButton
               action={deleteTask.bind(null, task.id)}
               confirmText="هل تريد حذف هذه المهمة نهائيًا؟"
               className={`${btn.danger} w-full`}
             >
               حذف المهمة
-            </ConfirmButton>
+            </ConfirmButton>}
           </Card>
+          )}
         </div>
       </div>
     </>

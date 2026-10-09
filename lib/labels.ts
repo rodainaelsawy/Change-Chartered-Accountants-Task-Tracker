@@ -4,6 +4,7 @@ export const STATUS_LABEL: Record<TaskStatus, string> = {
   not_started: 'لم تبدأ',
   in_progress: 'قيد التنفيذ',
   on_hold: 'معلّقة',
+  review: 'جاهزة للمراجعة',
   done: 'منجزة',
   cancelled: 'ملغاة',
 }
@@ -12,6 +13,7 @@ export const STATUS_STYLE: Record<TaskStatus, string> = {
   not_started: 'bg-slate-100 text-slate-700',
   in_progress: 'bg-sky-100 text-sky-800',
   on_hold: 'bg-violet-100 text-violet-800',
+  review: 'bg-amber-100 text-amber-800',
   done: 'bg-emerald-100 text-emerald-800',
   cancelled: 'bg-slate-100 text-slate-500 line-through',
 }
@@ -32,7 +34,10 @@ export const PRIORITY_STYLE: Record<TaskPriority, string> = {
 
 export const STATUSES = Object.keys(STATUS_LABEL) as TaskStatus[]
 export const PRIORITIES = Object.keys(PRIORITY_LABEL) as TaskPriority[]
-export const OPEN_STATUSES: TaskStatus[] = ['not_started', 'in_progress', 'on_hold']
+/** Not finished yet (a task waiting for review still counts as open and can be overdue). */
+export const OPEN_STATUSES: TaskStatus[] = ['not_started', 'in_progress', 'on_hold', 'review']
+/** SQL list of OPEN_STATUSES, e.g. `t.status in ${OPEN_SQL}`. */
+export const OPEN_SQL = `('not_started','in_progress','on_hold','review')`
 
 export function isOpen(status: TaskStatus) {
   return OPEN_STATUSES.includes(status)
@@ -43,6 +48,22 @@ export const NOTIF_LABEL = {
   due_today: 'موعد التسليم اليوم',
   overdue: 'تجاوزت موعد التسليم',
   assigned: 'أُسندت إليك مهمة',
+  followed: 'أُضفت كمتابع لمهمة',
+  review_requested: 'مهمة جاهزة لمراجعتك',
+  review_returned: 'أُعيدت المهمة للتعديل',
+  review_approved: 'تم اعتماد المهمة',
+} as const
+
+export const ROLE_LABEL = {
+  admin: 'مدير',
+  member: 'مسؤول مهام',
+  follower: 'متابع',
+} as const
+
+export const ROLE_HINT = {
+  admin: 'كل الصلاحيات: كل المهام والشركات والتقارير وإدارة الفريق',
+  member: 'يرى ويعدّل المهام المسندة إليه فقط، ويرسلها للمراجعة',
+  follower: 'يرى المهام التي يتابعها فقط، ويعتمدها أو يعيدها للتعديل',
 } as const
 
 export const FREQ_LABEL = {

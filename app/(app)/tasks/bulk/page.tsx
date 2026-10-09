@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { requireManager } from '@/lib/permissions'
 import { bulkAddTasks } from '@/app/actions/templates'
 import { ActionForm } from '@/components/action-form'
 import { ASSIGNEES_CHECK, AssigneePicker } from '@/components/assignee-picker'
@@ -6,14 +7,13 @@ import { BulkRowsEditor } from '@/components/rows-editor'
 import { CompanyCombobox } from '@/components/form-inputs'
 import { SideTips } from '@/components/side-tips'
 import { Crumbs, Card, Field, PageHeader } from '@/components/ui'
-import { requireSession } from '@/lib/auth'
 import { addDays, todayIn } from '@/lib/dates'
 import { companyOptions, teamMembers } from '@/lib/queries'
 
 export const metadata = { title: 'إضافة عدة مهام' }
 
 export default async function BulkAddPage({ searchParams }: { searchParams: Promise<{ company?: string }> }) {
-  const { org, user } = await requireSession()
+  const { org, user } = await requireManager()
   const sp = await searchParams
   const [companies, team] = await Promise.all([companyOptions(org.id), teamMembers(org.id)])
   return (

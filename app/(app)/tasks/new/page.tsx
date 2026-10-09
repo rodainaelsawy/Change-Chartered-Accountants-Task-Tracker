@@ -1,8 +1,8 @@
 import Link from 'next/link'
+import { requireManager } from '@/lib/permissions'
 import { TaskForm } from '@/components/task-form'
 import { SideTips, kbd } from '@/components/side-tips'
 import { Alert, Card, Crumbs, PageHeader, btn } from '@/components/ui'
-import { requireSession } from '@/lib/auth'
 import { addDays, todayIn } from '@/lib/dates'
 import { companyOptions, teamMembers } from '@/lib/queries'
 
@@ -13,7 +13,7 @@ export default async function NewTaskPage({
 }: {
   searchParams: Promise<{ company?: string; added?: string }>
 }) {
-  const { org, user } = await requireSession()
+  const { org, user } = await requireManager()
   const sp = await searchParams
   const [companies, team] = await Promise.all([companyOptions(org.id), teamMembers(org.id)])
 

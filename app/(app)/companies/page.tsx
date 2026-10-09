@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { canManage, visibleTo } from '@/lib/permissions'
+import { OPEN_SQL } from '@/lib/labels'
 import { RememberFilters } from '@/components/remember-filters'
 import { rememberedFilters } from '@/lib/remember-filters'
 import { Card, Empty, PageHeader, btn, inputCls } from '@/components/ui'
@@ -23,7 +25,7 @@ type Row = {
 }
 
 export default async function CompaniesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const { org } = await requireSession()
+  const { org, user } = await requireSession()
   const remembered = await rememberedFilters('companies', await searchParams, ['q', 'archived'])
   const q = remembered.get('q').trim()
   const archived = remembered.get('archived') === '1'
@@ -31,17 +33,17 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
 
   const rows = await query<Row>(
     `select c.id, c.name, c.activity, c.contact_person, c.phone, c.archived_at,
-            count(t.id) filter (where t.status in ('not_started','in_progress','on_hold'))::int as open,
-            count(t.id) filter (where t.status in ('not_started','in_progress','on_hold') and t.deadline < $2)::int as overdue,
+            count(t.id) filter (where t.status in ${OPEN_SQL})::int as open,
+            count(t.id) filter (where t.status in ${OPEN_SQL} and t.deadline < $2)::int as overdue,
             count(t.id) filter (where t.status = 'done')::int as done,
-            min(t.deadline) filter (where t.status in ('not_started','in_progress','on_hold')) as next_deadline
-       from companies c left join tasks t on t.company_id = c.id
+            min(t.deadline) filter (where t.status in ${OPEN_SQL}) as next_deadline
+       from companies c left join tasks t on t.company_id = c.id and ${visibleTo(user, '$5')}
       where c.org_id = $1 and (c.archived_at is not null) = $3
         and ($4 = '' or c.name ilike '%' || $4 || '%' or c.activity ilike '%' || $4 || '%'
              or c.contact_person ilike '%' || $4 || '%' or c.phone ilike '%' || $4 || '%')
       group by c.id
-      order by count(t.id) filter (where t.status in ('not_started','in_progress','on_hold') and t.deadline < $2) desc, c.name`,
-    [org.id, today, archived, q],
+      order by count(t.id) filter (where t.status in ${OPEN_SQL} and t.deadline < $2) desc, c.name`,
+    [org.id, today, archived, q, user.id],
   )
 
   return (
@@ -51,6 +53,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
         title={archived ? 'الشركات المؤرشفة' : 'الشركات'}
         subtitle={companiesCount(rows.length)}
         actions={
+          canManage(user) && (
           <>
             <Link href="/import" className={btn.secondary}>
               استيراد من Excel
@@ -59,6 +62,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
               + شركة جديدة
             </Link>
           </>
+          )
         }
       />
       <Card className="mb-4 p-4">

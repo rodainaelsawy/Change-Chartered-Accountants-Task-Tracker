@@ -11,8 +11,8 @@
 
 html {
   -webkit-text-size-adjust: 100%;
-  /* Slightly larger base size: 17px instead of 16px (all rem-based sizes scale with it) */
-  font-size: 106.25%;
+  /* Slightly larger base size: 18px instead of 16px (all rem-based sizes scale with it) */
+  font-size: 112.5%;
 }
 
 body {

@@ -1,13 +1,13 @@
 import Link from 'next/link'
+import { requireManager } from '@/lib/permissions'
 import { TemplateForm } from '@/components/template-form'
 import { SideTips } from '@/components/side-tips'
 import { Crumbs, Card, PageHeader } from '@/components/ui'
-import { requireSession } from '@/lib/auth'
 
 export const metadata = { title: 'قالب جديد' }
 
 export default async function NewTemplatePage() {
-  await requireSession()
+  await requireManager()
   return (
     <>
       <Crumbs items={[{ href: '/templates', label: 'قوالب المهام' }]} />

@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { TaskDoneToggle } from './task-done-toggle'
 import { formatDate } from '@/lib/dates'
 import { isOpen } from '@/lib/labels'
-import type { Task } from '@/lib/types'
+import type { Task, User } from '@/lib/types'
 import { DueText, Empty, PriorityText, StatusBadge, urgency, urgencyBorder } from './ui'
 
 /** Task rows with urgency colour, quick "mark done" toggle and links (FR-4.2, FR-6.2, FR-6.3). */
@@ -11,7 +11,10 @@ export function TaskList({
   today,
   showCompany = true,
   empty = 'لا توجد مهام',
+  viewer,
 }: {
+  /** The signed-in user: decides what the quick ✓ button may do on each task. */
+  viewer: Pick<User, 'id' | 'role'>
   tasks: Task[]
   today: string
   showCompany?: boolean
@@ -23,9 +26,18 @@ export function TaskList({
       {tasks.map((t) => {
         const open = isOpen(t.status)
         const u = urgency(t.status, t.deadline, today)
+        const admin = viewer.role === 'admin'
+        const mine = Boolean(t.assignees?.some((a) => a.id === viewer.id)) || t.created_by === viewer.id
+        const follows = Boolean(t.followers?.some((f) => f.id === viewer.id))
         return (
           <li key={t.id} className={`flex items-center gap-3 px-4 py-3 hover:bg-slate-50 ${urgencyBorder[u]}`}>
-            <TaskDoneToggle id={t.id} title={t.title} status={t.status} />
+            <TaskDoneToggle
+              id={t.id}
+              title={t.title}
+              status={t.status}
+              canEdit={admin || (viewer.role !== 'follower' && mine)}
+              canReview={admin || follows}
+            />
             <div className="min-w-0 flex-1">
               <Link
                 href={`/tasks/${t.id}`}
@@ -49,6 +61,11 @@ export function TaskList({
                 {!!t.assignees?.length && (
                   <span className="truncate" title="المسؤولون">
                     👤 {t.assignees.map((a) => a.name.split(' ')[0]).join('، ')}
+                  </span>
+                )}
+                {!!t.followers?.length && (
+                  <span className="truncate" title="المتابعون">
+                    👁 {t.followers.map((a) => a.name.split(' ')[0]).join('، ')}
                   </span>
                 )}
               </div>

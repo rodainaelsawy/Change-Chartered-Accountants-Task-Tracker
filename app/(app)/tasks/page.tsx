@@ -2,12 +2,16 @@ import Link from 'next/link'
 import { RememberFilters } from '@/components/remember-filters'
 import { rememberedFilters } from '@/lib/remember-filters'
 import { TaskList } from '@/components/task-list'
+import { TaskBoard } from '@/components/task-board'
+import { SavedFilters } from '@/components/saved-filters'
+import { query } from '@/lib/db'
 import { Card, PageHeader, btn, inputCls } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
 import { formatDate, todayIn } from '@/lib/dates'
 import { PRIORITIES, PRIORITY_LABEL, STATUSES, STATUS_LABEL, tasksCount } from '@/lib/labels'
 import { TASK_FILTER_KEYS, companyOptions, filterQuery, listTasks, parseTaskFilters, teamMembers, type TaskFilters } from '@/lib/queries'
 import { PrintButton } from '@/components/print-button'
+import { canManage } from '@/lib/permissions'
 
 export const metadata = { title: 'المهام' }
 
@@ -23,7 +27,14 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
   }
   const f: TaskFilters = parseTaskFilters(get, user.id)
   const today = todayIn(org.timezone)
-  const [tasks, companies, team] = await Promise.all([listTasks(org.id, f, today), companyOptions(org.id), teamMembers(org.id)])
+  const board = get('view') === 'board'
+  const [tasks, companies, team, saved] = await Promise.all([
+    listTasks(org.id, f, today, user),
+    companyOptions(org.id),
+    teamMembers(org.id),
+    query<{ id: string; name: string; query: string }>('select id, name, query from saved_filters where user_id = $1 order by name', [user.id]),
+  ])
+  const viewHref = (view: string) => `/tasks?${filterQuery(get, { view })}`
   const filtered = Boolean(f.q || f.company || f.assignee || f.priority || f.due || f.status !== 'all')
   const mine = f.assignee === user.id
 
@@ -33,6 +44,7 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
         title={mine ? 'مهامي' : 'المهام'}
         subtitle={tasksCount(tasks.length)}
         actions={
+          canManage(user) && (
           <>
             <Link href="/templates" className={btn.secondary}>
               القوالب
@@ -44,12 +56,14 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
               + مهمة جديدة
             </Link>
           </>
+          )
         }
       />
 
       <p className="mb-2 hidden text-sm text-slate-600 print:block">
         {org.name} · طُبعت في {formatDate(today)}
       </p>
+      {canManage(user) && (
       <div className="mb-3 flex gap-1 print:hidden">
         <Link href={tabHref('')} className={`rounded-lg px-3 py-1.5 text-sm font-medium ${!mine ? 'bg-brand-50 text-brand-800' : 'text-slate-600 hover:bg-slate-100'}`}>
           كل المهام
@@ -58,10 +72,12 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
           مهامي
         </Link>
       </div>
+      )}
 
       {/* Plain GET form: filters live in the URL, so a filtered view can be bookmarked or shared (FR-7.1, FR-7.2) */}
       <Card className="mb-4 p-4 print:hidden">
         <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
+          {board && <input type="hidden" name="view" value="board" />}
           <input name="q" defaultValue={f.q} placeholder="بحث في المهام والشركات…" className={`${inputCls} lg:col-span-2`} />
           <select name="company" defaultValue={f.company} className={inputCls}>
             <option value="">كل الشركات</option>
@@ -119,6 +135,14 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
             </label>
             <button className={btn.primary}>تطبيق</button>
             <span className="ms-auto flex gap-2">
+              <span className="inline-flex overflow-hidden rounded-lg border border-slate-300" role="group" aria-label="طريقة العرض">
+                <Link href={viewHref('list')} aria-current={!board ? 'true' : undefined} className={`px-3 py-2 text-sm ${!board ? 'bg-brand-50 font-medium text-brand-800' : 'text-slate-600 hover:bg-slate-50'}`}>
+                  ☰ قائمة
+                </Link>
+                <Link href={viewHref('board')} aria-current={board ? 'true' : undefined} className={`border-s border-slate-300 px-3 py-2 text-sm ${board ? 'bg-brand-50 font-medium text-brand-800' : 'text-slate-600 hover:bg-slate-50'}`}>
+                  ▦ لوحة
+                </Link>
+              </span>
               <a href={`/api/export/tasks?${new URLSearchParams(current)}`} className={btn.secondary}>
                 تصدير Excel
               </a>
@@ -134,9 +158,14 @@ export default async function TasksPage({ searchParams }: { searchParams: SP }) 
       </Card>
 
       <RememberFilters page="tasks" qs={current} reset={reset} />
-      <Card className="overflow-hidden">
-        <TaskList tasks={tasks} today={today} empty={filtered ? 'لا توجد مهام مطابقة' : 'لا توجد مهام بعد'} />
-      </Card>
+      <SavedFilters items={saved} current={current} />
+      {board ? (
+        <TaskBoard tasks={tasks} today={today} viewer={user} />
+      ) : (
+        <Card className="overflow-hidden">
+          <TaskList viewer={user} tasks={tasks} today={today} empty={filtered ? 'لا توجد مهام مطابقة' : 'لا توجد مهام بعد'} />
+        </Card>
+      )}
     </>
   )
 }

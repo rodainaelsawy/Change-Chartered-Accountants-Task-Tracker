@@ -4,7 +4,8 @@ import { head } from '@vercel/blob'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { ATTACHMENT_KINDS, companyInOrg, deleteCompanyFiles, recordAttachment } from '@/lib/attachments'
-import { requireSession } from '@/lib/auth'
+import { requireAdmin, requireSession } from '@/lib/auth'
+import { requireManager } from '@/lib/permissions'
 import { decrypt, encrypt } from '@/lib/crypto'
 import { one, query, tx } from '@/lib/db'
 import { MAX_PDF_BYTES, blobEnabled, companyPrefix, deleteFiles, safeFileName } from '@/lib/storage'
@@ -15,7 +16,7 @@ const str = (fd: FormData, k: string) => String(fd.get(k) ?? '').trim()
 const opt = (fd: FormData, k: string) => str(fd, k) || null
 
 export async function saveCompany(_: FormState, fd: FormData): Promise<FormState> {
-  const { user, org } = await requireSession()
+  const { user, org } = await requireManager()
   const id = str(fd, 'id')
   const name = str(fd, 'name')
   if (!name) return { error: 'اسم الشركة مطلوب' }
@@ -78,14 +79,14 @@ export async function revealTaxPassword(companyId: string): Promise<string | nul
 }
 
 export async function setCompanyArchived(id: string, archived: boolean) {
-  const { org } = await requireSession()
+  const { org } = await requireManager()
   await query(`update companies set archived_at = ${archived ? 'now()' : 'null'} where id = $1 and org_id = $2`, [id, org.id])
   revalidatePath('/companies')
   revalidatePath(`/companies/${id}`)
 }
 
 export async function deleteCompany(id: string) {
-  const { org } = await requireSession()
+  const { org } = await requireAdmin()
   if (!(await companyInOrg(id, org.id))) redirect('/companies')
   await deleteCompanyFiles(id)
   await query('delete from companies where id = $1 and org_id = $2', [id, org.id])
@@ -102,7 +103,7 @@ export async function confirmBlobUpload(input: {
   pathname: string
   fileName: string
 }): Promise<{ error?: string }> {
-  const { user, org } = await requireSession()
+  const { user, org } = await requireManager()
   if (!blobEnabled()) return { error: 'التخزين غير مفعّل' }
   if (!ATTACHMENT_KINDS.includes(input.kind)) return { error: 'نوع المرفق غير صحيح' }
   if (!(await companyInOrg(input.companyId, org.id))) return { error: 'الشركة غير موجودة' }
@@ -126,7 +127,7 @@ export async function confirmBlobUpload(input: {
 }
 
 export async function deleteAttachment(id: string) {
-  const { org } = await requireSession()
+  const { org } = await requireManager()
   const r = await one<{ storage_key: string; company_id: string }>(
     'delete from company_attachments where id = $1 and org_id = $2 returning storage_key, company_id',
     [id, org.id],
@@ -152,7 +153,7 @@ export type ImportRow = {
 
 /** Bulk import of companies with their tax data (no attachments). Rows whose name already exists are skipped. */
 export async function importCompanies(rows: ImportRow[]): Promise<{ added: number; skipped: number; error?: string }> {
-  const { user, org } = await requireSession()
+  const { user, org } = await requireManager()
   const t = (v: unknown) => String(v ?? '').trim() || null
   const clean = rows
     .map((r) => ({

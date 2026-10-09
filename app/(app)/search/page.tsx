@@ -7,13 +7,14 @@ import { query } from '@/lib/db'
 import { todayIn } from '@/lib/dates'
 import { companiesCount, tasksCount } from '@/lib/labels'
 import { TASK_SELECT } from '@/lib/queries'
+import { visibleTo } from '@/lib/permissions'
 import type { Task } from '@/lib/types'
 
 export const metadata = { title: 'بحث' }
 
 /** Global search across companies and tasks (H6 recognition, H7 efficiency). */
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const { org } = await requireSession()
+  const { org, user } = await requireSession()
   const q = ((await searchParams).q ?? '').trim()
   const like = `%${q}%`
   const [companies, tasks] = q
@@ -26,9 +27,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           [org.id, like],
         ),
         query<Task>(
-          `${TASK_SELECT} where t.org_id = $1 and (t.title ilike $2 or t.description ilike $2 or c.name ilike $2)
+          `${TASK_SELECT} where t.org_id = $1 and (t.title ilike $2 or t.description ilike $2 or c.name ilike $2) and ${visibleTo(user, '$3')}
             order by (t.status in ('done', 'cancelled')), t.deadline limit 50`,
-          [org.id, like],
+          [org.id, like, user.id],
         ),
       ])
     : [[], []]
@@ -67,7 +68,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           </Card>
           <Card className="h-fit overflow-hidden xl:col-span-2">
             <h2 className="border-b border-slate-200 px-4 py-3 font-semibold">المهام ({tasks.length})</h2>
-            <TaskList tasks={tasks} today={todayIn(org.timezone)} empty="لا توجد مهام مطابقة" />
+            <TaskList viewer={user} tasks={tasks} today={todayIn(org.timezone)} empty="لا توجد مهام مطابقة" />
           </Card>
         </div>
       )}

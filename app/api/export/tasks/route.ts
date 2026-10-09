@@ -1,7 +1,7 @@
 import { getSession } from '@/lib/auth'
 import { todayIn } from '@/lib/dates'
 import { addSheet, newWorkbook, xlsxResponse } from '@/lib/excel'
-import { PRIORITY_LABEL, STATUS_LABEL } from '@/lib/labels'
+import { PRIORITY_LABEL, STATUS_LABEL, isOpen } from '@/lib/labels'
 import { listTasks, parseTaskFilters } from '@/lib/queries'
 import type { Task } from '@/lib/types'
 
@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   const { org, user } = session
   const sp = new URL(req.url).searchParams
   const today = todayIn(org.timezone)
-  const tasks = await listTasks(org.id, parseTaskFilters((k) => sp.get(k) ?? '', user.id), today, 10000)
+  const tasks = await listTasks(org.id, parseTaskFilters((k) => sp.get(k) ?? '', user.id), today, user, 10000)
 
   const wb = newWorkbook()
   addSheet<Task>(
@@ -30,7 +30,7 @@ export async function GET(req: Request) {
       {
         header: 'متأخرة',
         width: 9,
-        value: (t) => (['not_started', 'in_progress', 'on_hold'].includes(t.status) && t.deadline < today ? 'نعم' : ''),
+        value: (t) => (isOpen(t.status) && t.deadline < today ? 'نعم' : ''),
       },
       { header: 'الخطوات', width: 10, value: (t) => (t.checklist_total ? `${t.checklist_done}/${t.checklist_total}` : '') },
       { header: 'متكررة', width: 9, value: (t) => (t.series_id ? 'نعم' : '') },

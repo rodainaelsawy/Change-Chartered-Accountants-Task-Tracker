@@ -1,12 +1,12 @@
 import { CompanyForm } from '@/components/company-form'
+import { requireManager } from '@/lib/permissions'
 import { SideTips } from '@/components/side-tips'
 import { Card, Crumbs, PageHeader } from '@/components/ui'
-import { requireSession } from '@/lib/auth'
 
 export const metadata = { title: 'شركة جديدة' }
 
 export default async function NewCompanyPage() {
-  await requireSession()
+  await requireManager()
   return (
     <>
       <Crumbs items={[{ href: '/companies', label: 'الشركات' }]} />

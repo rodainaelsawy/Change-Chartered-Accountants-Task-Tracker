@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { visibleTo } from '@/lib/permissions'
 import { RememberFilters } from '@/components/remember-filters'
 import { rememberedFilters } from '@/lib/remember-filters'
 import { Card, PageHeader, btn, urgency } from '@/components/ui'
@@ -50,11 +51,13 @@ export default async function CalendarPage({
   // Grid: Saturday-first weeks covering the whole month.
   const gridStart = startOfWeek(first)
   const gridEnd = addDays(startOfWeek(last), 6)
-  const mine = sp.scope ? sp.scope === 'mine' : user.role !== 'admin'
+  const mine = user.role === 'follower' ? false : sp.scope ? sp.scope === 'mine' : user.role !== 'admin'
   const showClosed = sp.closed === '1'
 
   const params: unknown[] = [org.id, gridStart, gridEnd]
   const where = ['t.org_id = $1', 't.deadline between $2 and $3']
+  params.push(user.id)
+  where.push(visibleTo(user, `$${params.length}`))
   if (mine) {
     params.push(user.id)
     where.push(assignedTo(`$${params.length}`))
@@ -111,14 +114,14 @@ export default async function CalendarPage({
             </Link>
           )}
         </div>
-        <div className="flex gap-1">
+        {user.role !== 'follower' && <div className="flex gap-1">
           <Link href={qs({ scope: 'mine' })} className={`rounded-lg px-3 py-1 text-sm ${mine ? 'bg-brand-50 font-medium text-brand-800' : 'text-slate-600 hover:bg-slate-100'}`}>
             مهامي
           </Link>
           <Link href={qs({ scope: 'all' })} className={`rounded-lg px-3 py-1 text-sm ${!mine ? 'bg-brand-50 font-medium text-brand-800' : 'text-slate-600 hover:bg-slate-100'}`}>
             كل المهام
           </Link>
-        </div>
+        </div>}
         <form action="/calendar" className="flex flex-wrap items-center gap-2 text-sm">
           <input type="hidden" name="month" value={month} />
           <input type="hidden" name="scope" value={mine ? 'mine' : 'all'} />

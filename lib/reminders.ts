@@ -4,7 +4,7 @@ import { addDays, formatDate, relativeDue, todayIn } from './dates'
 import { PRIORITY_LABEL } from './labels'
 import { appUrl, emailLayout, escapeHtml, sendMail } from './mail'
 import { ensureNextOccurrences } from './recurrence'
-import type { Org, TaskPriority } from './types'
+import type { NotifKind, Org, TaskPriority } from './types'
 
 /*
  Reminder rules (FR-5.x):
@@ -17,6 +17,7 @@ import type { Org, TaskPriority } from './types'
  Done / cancelled tasks never produce reminders, and their unread reminders are cleared.
 */
 
+// Reminders are for work still to do: a task waiting for review ("review") does not remind its assignees.
 const OPEN = `('not_started','in_progress','on_hold')`
 
 /** Users who should receive a task's reminders. */
@@ -59,19 +60,43 @@ export async function syncNotifications(org: Pick<Org, 'id' | 'timezone' | 'remi
 
 /** "A task was assigned to you" for newly added assignees (except the person who did it). */
 export async function notifyAssigned(org: Pick<Org, 'id' | 'timezone'>, taskId: string, userIds: string[], actorId: string) {
-  const ids = userIds.filter((u) => u !== actorId)
+  await notifyUsers(org, taskId, userIds, 'assigned', actorId)
+}
+
+/**
+ One-off notification (assigned / followed / review_*) for some users, except the person who caused it.
+ Repeating the same kind on the same day marks it unread again (e.g. a task returned twice in one day).
+*/
+export async function notifyUsers(
+  org: Pick<Org, 'id' | 'timezone'>,
+  taskId: string,
+  userIds: string[],
+  kind: Extract<NotifKind, 'assigned' | 'followed' | 'review_requested' | 'review_returned' | 'review_approved'>,
+  actorId: string | null,
+) {
+  const ids = [...new Set(userIds)].filter((u) => u !== actorId)
   if (!ids.length) return
   await query(
     `insert into notifications (org_id, user_id, task_id, kind, notify_date)
-     select $1, u, $2, 'assigned', $3 from unnest($4::uuid[]) u
-     on conflict do nothing`,
-    [org.id, taskId, todayIn(org.timezone), ids],
+     select $1, u.id, $2, $3::notif_kind, $4 from users u where u.id = any($5::uuid[]) and u.org_id = $1 and u.active
+     on conflict (user_id, task_id, kind, notify_date) do update set read_at = null, created_at = now()`,
+    [org.id, taskId, kind, todayIn(org.timezone), ids],
   )
+}
+
+/** Users of a task by relation (for notifications). */
+export async function taskPeople(taskId: string, rel: 'assignees' | 'followers') {
+  const table = rel === 'assignees' ? 'task_assignees' : 'task_followers'
+  return (await query<{ user_id: string }>(`select user_id from ${table} where task_id = $1`, [taskId])).map((r) => r.user_id)
 }
 
 /** Marks a closed task's unread reminders as read (FR-5.7). */
 export async function clearTaskNotifications(taskId: string) {
-  await query(`update notifications set read_at = now() where task_id = $1 and read_at is null and kind <> 'assigned'`, [taskId])
+  await query(
+    `update notifications set read_at = now()
+      where task_id = $1 and read_at is null and kind in ('due_soon', 'due_today', 'overdue', 'review_requested')`,
+    [taskId],
+  )
 }
 
 /** Creates due recurring occurrences (at most one new one per series per pass). */

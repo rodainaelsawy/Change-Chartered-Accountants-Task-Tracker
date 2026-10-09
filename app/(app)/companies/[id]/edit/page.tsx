@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation'
+import { requireManager } from '@/lib/permissions'
 import { CompanyForm } from '@/components/company-form'
 import { SideTips } from '@/components/side-tips'
 import { Crumbs, Card, PageHeader } from '@/components/ui'
-import { requireSession } from '@/lib/auth'
 import { one } from '@/lib/db'
 import type { Company } from '@/lib/types'
 
@@ -15,7 +15,7 @@ export default async function EditCompanyPage({
   params: Promise<{ id: string }>
   searchParams: Promise<{ tab?: string }>
 }) {
-  const { org } = await requireSession()
+  const { org } = await requireManager()
   const { id } = await params
   const { tab } = await searchParams
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound()

@@ -1,5 +1,6 @@
 'use server'
 
+import type { UserRole } from '@/lib/types'
 import { revalidatePath } from 'next/cache'
 import { createPasswordToken, hashPassword, requireAdmin, requireSession, verifyPassword } from '@/lib/auth'
 import { one, query } from '@/lib/db'
@@ -70,7 +71,7 @@ export async function inviteUser(_: FormState, fd: FormData): Promise<FormState>
   if (exists) return { error: 'يوجد مستخدم بهذا البريد بالفعل' }
   const u = (await one<{ id: string }>(
     `insert into users (org_id, email, full_name, role) values ($1, $2, $3, $4) returning id`,
-    [org.id, email, fullName, fd.get('role') === 'admin' ? 'admin' : 'member'],
+    [org.id, email, fullName, ROLES.includes(fd.get('role') as UserRole) ? fd.get('role') : 'member'],
   ))!
   const link = await sendInvite(u.id, email, fullName, org.name, user.full_name)
   revalidatePath('/settings')
@@ -100,9 +101,11 @@ export async function setUserActive(userId: string, active: boolean) {
   revalidatePath('/settings')
 }
 
-export async function setUserRole(userId: string, role: 'admin' | 'member') {
+const ROLES: UserRole[] = ['admin', 'member', 'follower']
+
+export async function setUserRole(userId: string, role: UserRole) {
   const { user, org } = await requireAdmin()
-  if (userId === user.id) return
+  if (userId === user.id || !ROLES.includes(role)) return
   await query('update users set role = $3 where id = $1 and org_id = $2', [userId, org.id, role])
   revalidatePath('/settings')
 }

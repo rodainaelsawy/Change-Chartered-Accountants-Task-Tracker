@@ -12,13 +12,14 @@ export type NewTask = {
   description?: string | null
   reminderDays?: number | null
   assigneeIds: string[]
+  followerIds?: string[]
   checklist?: string[]
   recurrence?: RecurrenceFreq | null
 }
 
 /**
  Inserts one task with its assignees, checklist and (optional) recurrence, and logs "created".
- Must run inside a transaction (`tx`). Callers then run notifyAssigned + syncNotifications for the new id.
+ Must run inside a transaction (`tx`). Callers then run notifyAssigned (+ notifyUsers 'followed') + syncNotifications for the new id.
  Validation (company/users belong to the org, mandatory fields) is the caller's job.
 */
 export async function insertTask(
@@ -55,6 +56,8 @@ export async function insertTask(
   )
   const id = r.rows[0].id as string
   await c.query('insert into task_assignees (task_id, user_id) select $1, unnest($2::uuid[]) on conflict do nothing', [id, t.assigneeIds])
+  if (t.followerIds?.length)
+    await c.query('insert into task_followers (task_id, user_id) select $1, unnest($2::uuid[]) on conflict do nothing', [id, t.followerIds])
   for (const [i, item] of (t.checklist ?? []).entries())
     await c.query('insert into task_checklist_items (task_id, title, position) values ($1,$2,$3)', [id, item, i])
   await logActivity({ orgId: ctx.orgId, taskId: id, userId: ctx.userId, action: 'created', details: activityDetails }, c)

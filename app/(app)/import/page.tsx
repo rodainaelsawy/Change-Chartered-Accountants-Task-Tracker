@@ -1,12 +1,12 @@
 import Link from 'next/link'
+import { requireManager } from '@/lib/permissions'
 import { Crumbs, Card, PageHeader } from '@/components/ui'
-import { requireSession } from '@/lib/auth'
 import { ImportCompanies } from './import-companies'
 
 export const metadata = { title: 'استيراد الشركات' }
 
 export default async function ImportPage() {
-  await requireSession()
+  await requireManager()
   return (
     <>
       <Crumbs items={[{ href: '/companies', label: 'الشركات' }]} />

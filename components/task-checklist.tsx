@@ -6,7 +6,7 @@ import { addChecklistItem, deleteChecklistItem, toggleChecklistItem } from '@/ap
 export type ChecklistItem = { id: string; title: string; done: boolean; done_by_name: string | null }
 
 /** Steps inside a task: tick, add, delete. Progress bar on top. */
-export function TaskChecklist({ taskId, items }: { taskId: string; items: ChecklistItem[] }) {
+export function TaskChecklist({ taskId, items, readOnly = false }: { taskId: string; items: ChecklistItem[]; readOnly?: boolean }) {
   const [optimistic, setOptimistic] = useOptimistic(items, (state, change: { id: string; done?: boolean; remove?: boolean }) =>
     change.remove ? state.filter((i) => i.id !== change.id) : state.map((i) => (i.id === change.id ? { ...i, done: !!change.done } : i)),
   )
@@ -35,6 +35,7 @@ export function TaskChecklist({ taskId, items }: { taskId: string; items: Checkl
             <input
               type="checkbox"
               checked={i.done}
+              disabled={readOnly}
               aria-label={i.title}
               onChange={(e) => {
                 const v = e.target.checked
@@ -47,7 +48,7 @@ export function TaskChecklist({ taskId, items }: { taskId: string; items: Checkl
             />
             <span className={`flex-1 text-sm ${i.done ? 'text-slate-400 line-through' : 'text-slate-800'}`}>{i.title}</span>
             {i.done && i.done_by_name && <span className="text-xs text-slate-400">{i.done_by_name}</span>}
-            <button
+            {!readOnly && <button
               type="button"
               onClick={() => {
                 if (!window.confirm(`حذف الخطوة «${i.title}»؟`)) return
@@ -60,12 +61,12 @@ export function TaskChecklist({ taskId, items }: { taskId: string; items: Checkl
               aria-label="حذف الخطوة"
             >
               حذف
-            </button>
+            </button>}
           </li>
         ))}
       </ul>
       {!optimistic.length && <p className="mb-2 text-sm text-slate-500">لا توجد خطوات بعد.</p>}
-      <form
+      {!readOnly && <form
         className="mt-2 flex gap-2"
         onSubmit={async (e) => {
           e.preventDefault()
@@ -94,7 +95,7 @@ export function TaskChecklist({ taskId, items }: { taskId: string; items: Checkl
         <button disabled={adding} className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200">
           {adding ? '…' : 'إضافة'}
         </button>
-      </form>
+      </form>}
       {error && <p className="mt-1 text-xs text-red-700">{error}</p>}
     </div>
   )

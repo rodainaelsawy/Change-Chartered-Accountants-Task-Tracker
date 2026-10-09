@@ -1,4 +1,7 @@
-import { changePassword, inviteUser, setUserActive, setUserRole, updateOrg, updateProfile } from '@/app/actions/settings'
+import { changePassword, inviteUser, setUserActive, updateOrg, updateProfile } from '@/app/actions/settings'
+import { RoleSelect } from '@/components/role-select'
+import { ROLE_HINT, ROLE_LABEL } from '@/lib/labels'
+import type { UserRole } from '@/lib/types'
 import { ActionForm, ConfirmButton } from '@/components/action-form'
 import { Card, Field, PageHeader, btn, inputCls } from '@/components/ui'
 import { requireSession } from '@/lib/auth'
@@ -7,7 +10,7 @@ import { InviteLinkButton } from './invite-link-button'
 
 export const metadata = { title: 'الإعدادات' }
 
-type Member = { id: string; email: string; full_name: string; role: 'admin' | 'member'; active: boolean; pending: boolean }
+type Member = { id: string; email: string; full_name: string; role: UserRole; active: boolean; pending: boolean }
 
 export default async function SettingsPage() {
   const { user, org } = await requireSession()
@@ -90,8 +93,11 @@ export default async function SettingsPage() {
               </Field>
               <Field label="الصلاحية">
                 <select name="role" required className={inputCls} defaultValue="member">
-                  <option value="member">عضو</option>
-                  <option value="admin">مدير (يدير الفريق والإعدادات)</option>
+                  {(Object.keys(ROLE_LABEL) as UserRole[]).map((r) => (
+                    <option key={r} value={r}>
+                      {ROLE_LABEL[r]} — {ROLE_HINT[r]}
+                    </option>
+                  ))}
                 </select>
               </Field>
             </ActionForm>
@@ -118,7 +124,9 @@ export default async function SettingsPage() {
                   <tr key={m.id} className={m.active ? '' : 'text-slate-400'}>
                     <td className="px-5 py-3 font-medium">{m.full_name}</td>
                     <td className="px-5 py-3 ltr text-right">{m.email}</td>
-                    <td className="px-5 py-3">{m.role === 'admin' ? 'مدير' : 'عضو'}</td>
+                    <td className="px-5 py-3">
+                      {m.id === user.id ? ROLE_LABEL[m.role] : <RoleSelect userId={m.id} name={m.full_name} role={m.role} />}
+                    </td>
                     <td className="px-5 py-3">
                       {!m.active ? 'موقوف' : m.pending ? <span className="text-amber-700">بانتظار قبول الدعوة</span> : 'نشط'}
                     </td>
@@ -126,13 +134,6 @@ export default async function SettingsPage() {
                       {m.id !== user.id && (
                         <div className="flex flex-wrap justify-end gap-1">
                           {m.pending && m.active && <InviteLinkButton userId={m.id} />}
-                          <ConfirmButton
-                            action={setUserRole.bind(null, m.id, m.role === 'admin' ? 'member' : 'admin')}
-                            confirmText={m.role === 'admin' ? `سحب صلاحية المدير من ${m.full_name}؟` : `منح ${m.full_name} صلاحية المدير (إدارة الفريق والإعدادات)؟`}
-                            className={btn.ghost}
-                          >
-                            {m.role === 'admin' ? 'جعله عضوًا' : 'جعله مديرًا'}
-                          </ConfirmButton>
                           <ConfirmButton
                             action={setUserActive.bind(null, m.id, !m.active)}
                             confirmText={
